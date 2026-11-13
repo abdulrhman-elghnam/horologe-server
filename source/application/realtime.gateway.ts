@@ -9,5 +9,4 @@ export class RealtimeGateway {
   // create(@MessageBody() createRealtimeDto: CreateRealtimeDto) {
   //   return this.realtimeService.create(createRealtimeDto);
   // }
-
 }

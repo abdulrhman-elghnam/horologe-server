@@ -1,9 +1,7 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 
-
 import { HUserDocument } from '../../database/model/user.model.js';
 import { CtxType, IAuthReq, IAuthSocket } from '../interface/ctx.interface.js';
-
 
 export const User = createParamDecorator((data: keyof HUserDocument | undefined, context: ExecutionContext) => {
   let user!: HUserDocument;

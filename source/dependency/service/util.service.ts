@@ -5,7 +5,6 @@ import { Socket } from 'socket.io';
 import { IAuthReq } from '../interface/ctx.interface.js';
 import { ConfigService } from '@nestjs/config';
 
-
 export const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const MRN_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';

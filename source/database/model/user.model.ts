@@ -1,7 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 
-
 import { IUser } from '../../dependency/interface/database.interface.js';
 import { AuthProviderEnum, SystemRoleEnum } from '../../dependency/enum/security.enum.js';
 
@@ -24,7 +23,6 @@ export class User {
   @Prop({ type: String, trim: true })
   phone?: string;
 
-  /** Storage key of the encrypted avatar file (served via GET /users/:id/avatar). */
   @Prop({ type: String, default: null })
   avatarKey?: string | null;
 

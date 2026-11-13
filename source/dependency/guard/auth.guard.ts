@@ -1,7 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
-
 import { CtxType, IAuthReq, IAuthSocket } from '../interface/ctx.interface.js';
 
 import { tokenTypeName } from '../decorator/token.decorator.js';

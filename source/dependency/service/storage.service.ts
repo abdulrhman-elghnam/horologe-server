@@ -6,7 +6,6 @@ import { isAbsolute, join, resolve, sep } from 'node:path';
 import { SecurityService } from './security.service.js';
 import { SignedUrl } from '../presenter.js';
 
-
 @Injectable()
 export class StorageService {
   private readonly logger = new Logger(StorageService.name);

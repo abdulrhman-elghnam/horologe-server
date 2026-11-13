@@ -53,7 +53,6 @@ export class Localize implements OnModuleInit {
     Localize.instance = this;
   }
 
-
   translate(text: string): string {
     const key = this.exact.get(text);
     if (key) return this.i18n.translate(key);

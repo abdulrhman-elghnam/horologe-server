@@ -1,10 +1,8 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-
 import { roleName } from '../decorator/role.decorator.js';
-
-import type { IAuthReq, IAuthSocket } from '../interface/ctx.interface.js';
 import { SystemRoleEnum } from '../enum/security.enum.js';
+import type { IAuthReq, IAuthSocket } from '../interface/ctx.interface.js';
 
 export const matchRoles = (requiredRoles: SystemRoleEnum[], userRole: SystemRoleEnum | undefined): boolean =>
   !requiredRoles.length || (!!userRole && requiredRoles.includes(userRole));

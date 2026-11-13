@@ -10,7 +10,6 @@ import { IAuthReq } from '../interface/ctx.interface.js';
 import { HUserDocument, User } from '../../database/model/user.model.js';
 import { UserRepository } from '../../database/repository/user.repository.js';
 
-
 @Injectable()
 export class TokenService {
   private readonly accessTokenExpiresIn: number;

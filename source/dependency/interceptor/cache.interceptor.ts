@@ -4,7 +4,6 @@ import type { Request, Response } from 'express';
 
 import { Observable, of, tap } from 'rxjs';
 
-
 import { I18nContext } from '@nestjs/i18n';
 import type { IAuthReq } from '../interface/ctx.interface.js';
 import { CacheService } from '../service/cache.service.js';
@@ -27,7 +26,7 @@ export class CacheInterceptor implements NestInterceptor {
     const request = httpContext.getRequest<Request & Partial<IAuthReq>>();
     const response = httpContext.getResponse<Response>();
 
-    if (request.method !== 'GET' || request.headers.authorization || request.credentials || request.user) next.handle()
+    if (request.method !== 'GET' || request.headers.authorization || request.credentials || request.user) next.handle();
 
     const language = this.i18n.locale;
     const key = `http-cache:${language}:${request.originalUrl}`;
