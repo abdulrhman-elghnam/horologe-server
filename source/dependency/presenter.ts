@@ -1,10 +1,6 @@
-import type { Types } from 'mongoose';
-
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { Localize } from './language/localize.js';
 
 export const API_PREFIX = '/api/v1';
-
 export type SignedFileKind = 'image' | 'avatar';
 
 export class SignedUrl {
@@ -34,40 +30,3 @@ export class SignedUrl {
     return expected.length === given.length && timingSafeEqual(expected, given);
   }
 }
-
-const idOf = (value: unknown): string | null => {
-  if (!value) return null;
-  const v = value as { _id?: Types.ObjectId; toString(): string };
-  return v._id ? v._id.toString() : v.toString();
-};
-
-export const presentUser = (user: any) => {
-  if (!user) return null;
-  if (typeof user !== 'object' || !('email' in user)) return { id: idOf(user) };
-  const id = idOf(user)!;
-  return {
-    id,
-    _id: id,
-    name: user.name,
-    email: user.email,
-    city: user.city,
-    phone: user.phone ?? null,
-    role: user.role,
-    avatarUrl: user.avatarKey ? SignedUrl.sign('avatar', id) : (user.avatarUrl ?? null),
-    provider: user.provider,
-    emailVerifiedAt: user.emailVerifiedAt ?? null,
-    isActive: user.isActive !== false,
-    createdAt: user.createdAt,
-    updatedAt: user.updatedAt,
-  };
-};
-
-export const imageFileUrl = (imageId: string) => `${API_PREFIX}/fundus-images/${imageId}/file`;
-
-export const paged = <T>(result: { docs: unknown[]; count: number; currentPage: number; size: number; pages: number }, map: (doc: any) => T) => ({
-  items: result.docs.map(map),
-  total: result.count,
-  page: result.currentPage,
-  size: result.size,
-  pages: result.pages,
-});

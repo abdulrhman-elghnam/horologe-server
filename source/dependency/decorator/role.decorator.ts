@@ -1,5 +1,5 @@
 import { SetMetadata } from '@nestjs/common';
-import { SystemRoleEnum } from '../enum/_INDEX.js';
+import { SystemRoleEnum } from '../value/_INDEX.js';
 
 export const roleName = 'ROLES_OPTION';
 export const Role = (roles: SystemRoleEnum[]) => {

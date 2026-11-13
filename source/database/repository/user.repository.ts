@@ -4,7 +4,7 @@ import { Model, Types } from 'mongoose';
 
 import { User, type HUserDocument } from '../model/user.model.js';
 
-import { SystemRoleEnum } from '../../dependency/enum/security.enum.js';
+import { SystemRoleEnum } from '../../dependency/value/security.enum.js';
 import { DatabaseRepository } from './base.repository.js';
 import { IUser } from '../../dependency/interface/database.interface.js';
 import { escapeRegex } from '../../dependency/service/util.service.js';

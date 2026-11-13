@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { AuthProviderEnum, SystemRoleEnum } from '../enum/security.enum.js';
+import { AuthProviderEnum, SystemRoleEnum } from '../value/security.enum.js';
 
 interface Timestamps {
   createdAt?: Date;

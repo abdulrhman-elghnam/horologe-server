@@ -1,8 +1,22 @@
 import { Injectable } from '@nestjs/common';
+import type { Server } from 'socket.io';
+
+export const userRoom = (userId: string) => `user:${userId}`;
+export const conversationRoom = (conversationId: string) => `conversation:${conversationId}`;
 
 @Injectable()
 export class RealtimeService {
-  // create(createRealtimeDto: CreateRealtimeDto) {
-  //   return 'This action adds a new realtime';
-  // }
+  private server?: Server;
+
+  attach(server: Server) {
+    this.server = server;
+  }
+
+  emitToUser(userId: string, event: string, payload: unknown) {
+    this.server?.to(userRoom(userId)).emit(event, payload);
+  }
+
+  emitToRoom(room: string, event: string, payload: unknown) {
+    this.server?.to(room).emit(event, payload);
+  }
 }

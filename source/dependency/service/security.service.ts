@@ -61,7 +61,6 @@ export class SecurityService {
     return decrypted.toString('utf8');
   }
 
-  /** Encrypts binary data (images) with AES-256-GCM. Layout: iv(12) | tag(16) | ciphertext. */
   encryptBuffer(data: Buffer): Buffer {
     const iv = randomBytes(12);
     const cipher = createCipheriv(this.algorithm, this.key, iv);

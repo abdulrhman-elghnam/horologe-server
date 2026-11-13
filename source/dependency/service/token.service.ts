@@ -4,7 +4,7 @@ import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import { Types } from 'mongoose';
 import { randomUUID } from 'node:crypto';
 import { RedisKeys, CacheService } from './cache.service.js';
-import { TokenEnum, SystemRoleEnum } from '../enum/security.enum.js';
+import { TokenEnum, SystemRoleEnum } from '../value/security.enum.js';
 import { JwtPayload } from 'jsonwebtoken';
 import { IAuthReq } from '../interface/ctx.interface.js';
 import { HUserDocument, User } from '../../database/model/user.model.js';

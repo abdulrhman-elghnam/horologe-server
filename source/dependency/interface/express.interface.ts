@@ -1,5 +1,5 @@
 import { JwtPayload } from 'jsonwebtoken';
-import { SystemRoleEnum } from '../enum/security.enum.js';
+import { SystemRoleEnum } from '../value/security.enum.js';
 
 declare global {
   namespace Express {

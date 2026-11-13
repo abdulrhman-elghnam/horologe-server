@@ -4,7 +4,7 @@ import { Reflector } from '@nestjs/core';
 import { CtxType, IAuthReq, IAuthSocket } from '../interface/ctx.interface.js';
 
 import { tokenTypeName } from '../decorator/token.decorator.js';
-import { TokenEnum } from '../enum/security.enum.js';
+import { TokenEnum } from '../value/security.enum.js';
 import { TokenService } from '../service/token.service.js';
 import { UtilService } from '../service/util.service.js';
 
