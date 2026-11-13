@@ -48,7 +48,6 @@ export abstract class DatabaseRepository<T extends ObjectLiteral & { id: string 
     return { id } as FindOptionsWhere<T>;
   }
 
-  // ---------- create ----------
 
   async create({ data, manager }: { data: DeepPartial<T> } & Tx): Promise<T> {
     const repo = this.repo(manager);
@@ -60,7 +59,6 @@ export abstract class DatabaseRepository<T extends ObjectLiteral & { id: string 
     return repo.save(repo.create(data));
   }
 
-  // ---------- read ----------
 
   async findById({ id, options, manager }: { id: string; options?: ReadOptions<T> } & Tx): Promise<T | null> {
     return this.repo(manager).findOne({ where: this.byId(id), ...options });
@@ -108,10 +106,6 @@ export abstract class DatabaseRepository<T extends ObjectLiteral & { id: string 
     return { docs, count, currentPage, size: limit, pages: Math.ceil(count / limit) };
   }
 
-  // ---------- update ----------
-  // `update()` bumps @UpdateDateColumn and @VersionColumn automatically.
-
-  
   async updateOne({ where, data, manager }: { where: Where<T>; data: QueryDeepPartialEntity<T> } & Tx): Promise<UpdateResult> {
     const repo = this.repo(manager);
     const row = await repo.findOne({ where, select: { id: true } as FindOptionsSelect<T> });
@@ -141,7 +135,6 @@ export abstract class DatabaseRepository<T extends ObjectLiteral & { id: string 
     return this.findOneAndUpdate({ where: this.byId(id), data, options, manager });
   }
 
-  // ---------- delete ----------
 
   async deleteOne({ where, manager }: { where: Where<T> } & Tx): Promise<DeleteResult> {
     const repo = this.repo(manager);
