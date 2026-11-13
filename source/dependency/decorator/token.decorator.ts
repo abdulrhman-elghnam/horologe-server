@@ -1,5 +1,5 @@
 import { SetMetadata } from '@nestjs/common';
-import { TokenEnum } from '../value/security.enum.js';
+import { TokenEnum } from '../enum/security.enum.js';
 
 export const tokenTypeName = 'TOKEN_OPTION';
 export const Token = (tokenType: TokenEnum = TokenEnum.ACCESS) => {
