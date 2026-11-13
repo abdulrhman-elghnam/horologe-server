@@ -1,10 +1,11 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 
-import { HUserDocument } from '../../database/model/user.model.js';
-import { CtxType, IAuthReq, IAuthSocket } from '../interface/ctx.interface.js';
 
-export const User = createParamDecorator((data: keyof HUserDocument | undefined, context: ExecutionContext) => {
-  let user!: HUserDocument;
+import { CtxType, IAuthReq, IAuthSocket } from '../interface/ctx.interface.js';
+import { IUser } from '../interface/database.interface.js';
+
+export const User = createParamDecorator((data: keyof IUser | undefined, context: ExecutionContext) => {
+  let user!: IUser;
 
   switch (context.getType<CtxType>()) {
     case 'http':

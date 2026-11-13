@@ -1,4 +1,3 @@
-import { Types } from 'mongoose';
 import { AuthProviderEnum, SystemRoleEnum } from '../value/security.enum.js';
 
 interface Timestamps {
@@ -7,19 +6,19 @@ interface Timestamps {
 }
 
 export interface IUser extends Timestamps {
-  _id?: Types.ObjectId;
+  id?: string;
   role: SystemRoleEnum;
   name: string;
   email: string;
-  passwordHash?: string;
+  passwordHash?: string | null;
   city: string;
-  phone?: string;
-  avatarKey?: string;
-  avatarUrl?: string;
+  phone?: string | null;
+  avatarKey?: string | null;
+  avatarUrl?: string | null;
   provider?: AuthProviderEnum;
-  googleId?: string;
+  googleId?: string | null;
   emailVerifiedAt?: Date | null;
   consentAcceptedAt?: Date | null;
   isActive?: boolean;
-  language?: string | null;
+  language?: 'en' | 'ar' | null;
 }

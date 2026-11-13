@@ -1,63 +1,78 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument } from 'mongoose';
+import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, UpdateDateColumn, VersionColumn, type ValueTransformer } from 'typeorm';
 
 import { IUser } from '../../dependency/interface/database.interface.js';
 import { AuthProviderEnum, SystemRoleEnum } from '../../dependency/value/security.enum.js';
 
-export type HUserDocument = HydratedDocument<IUser>;
+const trim: ValueTransformer = {
+  to: (value?: string | null) => (typeof value === 'string' ? value.trim() : value),
+  from: (value: string | null) => value,
+};
 
-@Schema({ timestamps: true, collection: 'users' })
-export class User {
-  @Prop({ required: true, trim: true })
+const lowerTrim: ValueTransformer = {
+  to: (value?: string | null) => (typeof value === 'string' ? value.trim().toLowerCase() : value),
+  from: (value: string | null) => value,
+};
+
+@Entity({ name: 'users' })
+export class User implements IUser {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column({ type: 'varchar', length: 120, transformer: trim })
   name: string;
 
-  @Prop({ required: true, unique: true, lowercase: true, trim: true })
+  @Index({ unique: true })
+  @Column({ type: 'varchar', length: 255, transformer: lowerTrim })
   email: string;
 
-  @Prop({ required: false, select: false })
-  passwordHash?: string;
+  @Column({ name: 'password_hash', type: 'varchar', nullable: true, select: false })
+  passwordHash?: string | null;
 
-  @Prop({ required: true, trim: true })
+  @Column({ type: 'varchar', length: 120, transformer: trim })
   city: string;
 
-  @Prop({ type: String, trim: true })
-  phone?: string;
+  @Column({ type: 'varchar', length: 32, nullable: true, transformer: trim })
+  phone?: string | null;
 
-  @Prop({ type: String, default: null })
+  @Column({ name: 'avatar_key', type: 'varchar', nullable: true })
   avatarKey?: string | null;
 
-  @Prop({ type: String, trim: true })
-  avatarUrl?: string;
+  @Column({ name: 'avatar_url', type: 'varchar', nullable: true, transformer: trim })
+  avatarUrl?: string | null;
 
-  @Prop({ required: true, enum: Object.values(SystemRoleEnum), type: String, index: true })
+  @Index()
+  @Column({ type: 'enum', enum: SystemRoleEnum, enumName: 'user_role', default: SystemRoleEnum.CUSTOMER })
   role: SystemRoleEnum;
 
-  @Prop({
-    required: true,
-    enum: Object.values(AuthProviderEnum),
-    type: String,
-    default: AuthProviderEnum.SYSTEM,
-  })
+  @Column({ type: 'enum', enum: AuthProviderEnum, enumName: 'auth_provider', default: AuthProviderEnum.SYSTEM })
   provider: AuthProviderEnum;
 
-  @Prop({ type: String, unique: true, sparse: true, select: false })
-  googleId?: string;
 
-  @Prop({ type: Date, default: null })
+  @Index({ unique: true })
+  @Column({ name: 'google_id', type: 'varchar', nullable: true, select: false })
+  googleId?: string | null;
+
+  @Column({ name: 'email_verified_at', type: 'timestamptz', nullable: true })
   emailVerifiedAt?: Date | null;
 
-  /** When the user accepted the privacy policy / consent at sign-up (NFR11). */
-  @Prop({ type: Date, default: null })
+
+  @Column({ name: 'consent_accepted_at', type: 'timestamptz', nullable: true })
   consentAcceptedAt?: Date | null;
 
-  /** Admins can disable an account; disabled users cannot log in. */
-  @Prop({ type: Boolean, default: true })
+
+  @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive: boolean;
 
-  /** Preferred language (en | ar). Unset = use the request's Accept-Language. */
-  @Prop({ type: String, enum: ['en', 'ar', null], default: null })
-  lang?: string | null;
-}
+  @Column({ type: 'varchar', length: 2, nullable: true })
+  language?: 'en' | 'ar' | null;
 
-export const UserSchema = SchemaFactory.createForClass(User);
-UserSchema.index({ name: 'text', email: 'text' });
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
+  createdAt: Date;
+
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+  updatedAt: Date;
+
+
+  @VersionColumn()
+  version: number;
+}

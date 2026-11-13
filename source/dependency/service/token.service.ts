@@ -1,14 +1,16 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
-import { Types } from 'mongoose';
+
 import { randomUUID } from 'node:crypto';
 import { RedisKeys, CacheService } from './cache.service.js';
 import { TokenEnum, SystemRoleEnum } from '../value/security.enum.js';
 import { JwtPayload } from 'jsonwebtoken';
 import { IAuthReq } from '../interface/ctx.interface.js';
-import { HUserDocument, User } from '../../database/model/user.model.js';
+
+import { User } from '../../database/model/user.model.js';
 import { UserRepository } from '../../database/repository/user.repository.js';
+import { isUuid } from './util.service.js';
 
 @Injectable()
 export class TokenService {
@@ -59,7 +61,7 @@ export class TokenService {
     return tokenType === TokenEnum.REFRESH ? this.refreshUserTokenSignature : this.accessUserTokenSignature;
   }
 
-  async decodeToken({ token, tokenType = TokenEnum.ACCESS }: { token: string; tokenType?: TokenEnum }): Promise<{ user: HUserDocument; decoded: JwtPayload }> {
+  async decodeToken({ token, tokenType = TokenEnum.ACCESS }: { token: string; tokenType?: TokenEnum }): Promise<{ user: User; decoded: JwtPayload }> {
     const rawDecoded = this.jwtService.decode(token);
 
     if (!rawDecoded || typeof rawDecoded !== 'object') {
@@ -84,7 +86,7 @@ export class TokenService {
       secret: this.getSignature(tokenType),
     });
 
-    if (!verifiedData.sub || !Types.ObjectId.isValid(verifiedData.sub)) {
+    if (!isUuid(verifiedData.sub)) {
       throw new BadRequestException('Invalid token subject');
     }
     if (!verifiedData.jti || verifiedData.iat === undefined) {
@@ -99,10 +101,14 @@ export class TokenService {
       throw new UnauthorizedException('Invalid login session');
     }
 
-    const user = await this.userRepository.findHydratedById(new Types.ObjectId(verifiedData.sub));
+    const user = await this.userRepository.findById({ id: verifiedData.sub });
 
     if (!user) {
       throw new NotFoundException('Account not found');
+    }
+
+    if (!user.isActive) {
+      throw new UnauthorizedException('Account is disabled');
     }
 
     if (user.role !== claimedRole) {
@@ -112,8 +118,8 @@ export class TokenService {
     return { user, decoded: verifiedData };
   }
 
-  async createLoginCredentials(user: Pick<User, 'role'> & { _id: Types.ObjectId }, issuer: string): Promise<{ access_token: string; refresh_token: string }> {
-    const subject = user._id.toString();
+  async createLoginCredentials(user: Pick<User, 'id' | 'role'>, issuer: string): Promise<{ access_token: string; refresh_token: string }> {
+    const subject = user.id;
     const accessJti = randomUUID();
     const refreshJti = randomUUID();
     const commonOptions = {
@@ -159,15 +165,15 @@ export class TokenService {
     return { access_token, refresh_token };
   }
 
-  async logout(userId: Types.ObjectId | string): Promise<number> {
+  async logout(userId: string): Promise<number> {
     return this.redis.deleteByPattern({
-      pattern: RedisKeys.userTokens(userId.toString()),
+      pattern: RedisKeys.userTokens(userId),
     });
   }
 
-  async revokeToken(userId: Types.ObjectId | string, tokenId: string): Promise<number> {
+  async revokeToken(userId: string, tokenId: string): Promise<number> {
     return this.redis.deleteCache({
-      key: RedisKeys.userToken(userId.toString(), tokenId),
+      key: RedisKeys.userToken(userId, tokenId),
     });
   }
 

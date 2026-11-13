@@ -1,28 +1,51 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { Types } from 'mongoose';
+import { ConfigService } from '@nestjs/config';
 import { randomInt } from 'node:crypto';
 import { Socket } from 'socket.io';
 import { IAuthReq } from '../interface/ctx.interface.js';
-import { ConfigService } from '@nestjs/config';
 
-export const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-const MRN_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+export const isUuid = (value: unknown): value is string => typeof value === 'string' && UUID_PATTERN.test(value);
+
+export const escapeLike = (value: string) => value.replace(/[\\%_]/g, '\\$&');
+
+const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 @Injectable()
 export class UtilService {
   constructor(private readonly configService: ConfigService) {}
 
-  toObjectId = (id: string) => Types.ObjectId.createFromHexString(id);
-  generateSlug = (value: string) => value.replaceAll(/\s+/g, '-');
-  createNumberOtp = (): number => randomInt(100_000, 1_000_000);
-  createMedicalRecordNumber = (): string => {
-    let id = '';
-    for (let i = 0; i < 6; i++) {
-      id += MRN_ALPHABET[randomInt(0, MRN_ALPHABET.length)];
+  isUuid = isUuid;
+
+  /** Returns the id unchanged, or throws 400 when it isn't a UUID (use before querying by primary key). */
+  assertUuid = (id: unknown, label = 'id'): string => {
+    if (!isUuid(id)) {
+      throw new BadRequestException(`Invalid ${label}`);
     }
-    return `P-${id}`;
+    return id;
   };
+
+  generateSlug = (value: string) =>
+    value
+      .normalize('NFKD')
+      .replace(/[̀-ͯ]/g, '')
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9؀-ۿ]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+  createNumberOtp = (): number => randomInt(100_000, 1_000_000);
+
+
+  createReferenceCode = (prefix: string, length = 6): string => {
+    let code = '';
+    for (let i = 0; i < length; i++) {
+      code += CODE_ALPHABET[randomInt(0, CODE_ALPHABET.length)];
+    }
+    return `${prefix}-${code}`;
+  };
+
   getAuthSocket = (client: Socket): string | undefined => {
     const auth = client.handshake.auth as Record<string, unknown> | undefined;
     const fromAuth = auth?.authorization ?? auth?.token;
@@ -33,6 +56,7 @@ export class UtilService {
     const base = this.configService.get<string>('app.frontendUrl', 'http://localhost:3000').replace(/\/$/, '');
     return `${base}${path}`;
   }
+
   issuer(request: IAuthReq): string {
     const configuredIssuer = this.configService.get<string>('auth.issuer');
     if (configuredIssuer) {

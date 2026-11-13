@@ -8,14 +8,13 @@ export enum LogoutEnum {
 }
 
 export enum SystemRoleEnum {
+  CUSTOMER = 'customer',
   ADMIN = 'admin',
-  DOCTOR = 'doctor',
-  PATIENT = 'patient',
+  SUPER_ADMIN = 'super_admin',
 }
 
 export enum SignUpRoleEnum {
-  DOCTOR = 'doctor',
-  PATIENT = 'patient',
+  CUSTOMER = 'customer',
 }
 
 export enum ProviderEnum {

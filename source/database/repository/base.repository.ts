@@ -1,242 +1,170 @@
 import { Injectable } from '@nestjs/common';
 import {
-  HydratedDocument,
-  CreateOptions,
+  DeepPartial,
   DeleteResult,
-  InsertManyOptions,
-  Model,
-  PopulateOptions,
-  ProjectionType,
-  QueryFilter,
-  QueryOptions,
-  Types,
-  UpdateQuery,
+  EntityManager,
+  FindOneOptions,
+  FindOptionsOrder,
+  FindOptionsRelations,
+  FindOptionsSelect,
+  FindOptionsWhere,
+  ObjectLiteral,
+  QueryDeepPartialEntity,
+  Repository,
   UpdateResult,
-  UpdateWithAggregationPipeline,
-} from 'mongoose';
+} from 'typeorm';
+
+export type Where<T> = FindOptionsWhere<T> | FindOptionsWhere<T>[];
+
+export interface ReadOptions<T> {
+  select?: FindOptionsSelect<T>;
+  relations?: FindOptionsRelations<T>;
+  order?: FindOptionsOrder<T>;
+  lock?: FindOneOptions<T>['lock'];
+  withDeleted?: boolean;
+}
+
+interface Tx {
+  manager?: EntityManager;
+}
+
+export interface Paginated<T> {
+  docs: T[];
+  count: number;
+  currentPage: number;
+  size: number;
+  pages: number;
+}
 
 @Injectable()
-export abstract class DatabaseRepository<T> {
-  constructor(protected readonly model: Model<T>) {}
+export abstract class DatabaseRepository<T extends ObjectLiteral & { id: string }> {
+  constructor(protected readonly repository: Repository<T>) {}
 
-  async create({ data, options }: { data: Partial<T>; options?: CreateOptions }): Promise<HydratedDocument<T>> {
-    return (await new this.model(data).save(options)) as HydratedDocument<T>;
+  protected repo(manager?: EntityManager): Repository<T> {
+    return manager ? manager.withRepository(this.repository) : this.repository;
   }
 
-  async createMany({ data, options }: { data: Partial<T>[]; options?: InsertManyOptions }) {
-    return options ? this.model.insertMany(data, options) : this.model.insertMany(data);
+  protected byId(id: string): FindOptionsWhere<T> {
+    return { id } as FindOptionsWhere<T>;
   }
 
-  findById(args: { _id: Types.ObjectId | string; projection?: ProjectionType<T>; options: QueryOptions<T> & { lean: true } }): Promise<any>;
-  findById(args: { _id: Types.ObjectId | string; projection?: ProjectionType<T>; options?: QueryOptions<T> }): Promise<HydratedDocument<T> | null>;
-  async findById({ _id, projection, options }: { _id: Types.ObjectId | string; projection?: ProjectionType<T>; options?: QueryOptions<T> }) {
-    const query = this.model.findById(_id, projection);
+  // ---------- create ----------
 
-    if (options?.populate) {
-      query.populate(options.populate as PopulateOptions[]);
-    }
-
-    if (options?.lean) {
-      return query.lean().exec();
-    }
-
-    return query.exec();
+  async create({ data, manager }: { data: DeepPartial<T> } & Tx): Promise<T> {
+    const repo = this.repo(manager);
+    return repo.save(repo.create(data));
   }
 
-  findOne(args: { filter?: QueryFilter<T>; projection?: ProjectionType<T>; options: QueryOptions<T> & { lean: true } }): Promise<any>;
-  findOne(args: { filter?: QueryFilter<T>; projection?: ProjectionType<T>; options?: QueryOptions<T> }): Promise<HydratedDocument<T> | null>;
-  async findOne({ filter = {}, projection, options }: { filter?: QueryFilter<T>; projection?: ProjectionType<T>; options?: QueryOptions<T> }) {
-    const query = this.model.findOne(filter, projection);
-
-    if (options?.populate) {
-      query.populate(options.populate as PopulateOptions[]);
-    }
-
-    if (options?.sort) {
-      query.sort(options.sort);
-    }
-
-    if (options?.lean) {
-      return query.lean().exec();
-    }
-
-    return query.exec();
+  async createMany({ data, manager }: { data: DeepPartial<T>[] } & Tx): Promise<T[]> {
+    const repo = this.repo(manager);
+    return repo.save(repo.create(data));
   }
 
-  find(args: { filter?: QueryFilter<T>; projection?: ProjectionType<T>; options: QueryOptions<T> & { lean: true } }): Promise<any[]>;
-  find(args: { filter?: QueryFilter<T>; projection?: ProjectionType<T>; options?: QueryOptions<T> }): Promise<HydratedDocument<T>[]>;
-  async find({ filter = {}, projection, options = {} }: { filter?: QueryFilter<T>; projection?: ProjectionType<T>; options?: QueryOptions<T> }) {
-    const query = this.model.find(filter, projection);
+  // ---------- read ----------
 
-    if (options.populate) {
-      query.populate(options.populate as PopulateOptions[]);
-    }
+  async findById({ id, options, manager }: { id: string; options?: ReadOptions<T> } & Tx): Promise<T | null> {
+    return this.repo(manager).findOne({ where: this.byId(id), ...options });
+  }
 
-    if (options.sort) {
-      query.sort(options.sort);
-    }
+  async findOne({ where, options, manager }: { where: Where<T>; options?: ReadOptions<T> } & Tx): Promise<T | null> {
+    return this.repo(manager).findOne({ where, ...options });
+  }
 
-    if (options.skip !== undefined) {
-      query.skip(options.skip);
-    }
+  async find({
+    where,
+    options,
+    skip,
+    take,
+    manager,
+  }: { where?: Where<T>; options?: ReadOptions<T>; skip?: number; take?: number } & Tx = {}): Promise<T[]> {
+    return this.repo(manager).find({ where, ...options, skip, take });
+  }
 
-    if (options.limit !== undefined) {
-      query.limit(options.limit);
-    }
+  async count({ where, manager }: { where?: Where<T> } & Tx = {}): Promise<number> {
+    return this.repo(manager).count({ where });
+  }
 
-    if (options.lean) {
-      return query.lean().exec();
-    }
-
-    return query.exec();
+  async exists({ where, manager }: { where: Where<T> } & Tx): Promise<boolean> {
+    return this.repo(manager).exists({ where });
   }
 
   async paginate({
-    filter = {},
-    projection,
-    options = {},
+    where,
+    options,
     page = 1,
     size = 5,
-  }: {
-    filter?: QueryFilter<T>;
-    projection?: ProjectionType<T>;
-    options?: QueryOptions<T>;
-    page?: number | string;
-    size?: number | string;
-  }): Promise<{ docs: any[]; count: number; currentPage: number; size: number; pages: number }> {
+    manager,
+  }: { where?: Where<T>; options?: ReadOptions<T>; page?: number | string; size?: number | string } & Tx): Promise<Paginated<T>> {
     const currentPage = Math.max(1, Math.floor(Number(page) || 1));
     const limit = Math.max(1, Math.floor(Number(size) || 5));
-    const skip = (currentPage - 1) * limit;
 
-    const [count, docs] = await Promise.all([
-      this.model.countDocuments(filter).exec(),
-      (this.find as any)({
-        filter,
-        projection,
-        options: {
-          ...options,
-          skip,
-          limit,
-        },
-      }),
-    ]);
+    const [docs, count] = await this.repo(manager).findAndCount({
+      where,
+      ...options,
+      skip: (currentPage - 1) * limit,
+      take: limit,
+    });
 
-    return {
-      docs,
-      count,
-      currentPage,
-      size: limit,
-      pages: Math.ceil(count / limit),
-    };
+    return { docs, count, currentPage, size: limit, pages: Math.ceil(count / limit) };
   }
 
-  async updateOne({
-    filter,
-    update,
-    options,
-  }: {
-    filter: QueryFilter<T>;
-    update: UpdateQuery<T>;
-    options?: Omit<QueryOptions<T>, 'session'> & {
-      session?: Exclude<QueryOptions<T>['session'], null>;
-    };
-  }): Promise<UpdateResult> {
-    return this.model
-      .updateOne(
-        filter,
-        {
-          ...update,
-          $inc: {
-            ...update.$inc,
-            __v: 1,
-          },
-        },
-        {
-          ...options,
-          runValidators: true,
-        },
-      )
-      .exec();
+  // ---------- update ----------
+  // `update()` bumps @UpdateDateColumn and @VersionColumn automatically.
+
+  
+  async updateOne({ where, data, manager }: { where: Where<T>; data: QueryDeepPartialEntity<T> } & Tx): Promise<UpdateResult> {
+    const repo = this.repo(manager);
+    const row = await repo.findOne({ where, select: { id: true } as FindOptionsSelect<T> });
+    if (!row) return { raw: [], affected: 0, generatedMaps: [] };
+    return repo.update(row.id, data);
   }
 
-  async updateMany({
-    filter,
-    update,
-    options,
-  }: {
-    filter: QueryFilter<T>;
-    update: UpdateQuery<T> | UpdateWithAggregationPipeline;
-    options?: Omit<QueryOptions<T>, 'session'> & {
-      session?: Exclude<QueryOptions<T>['session'], null>;
-    };
-  }): Promise<UpdateResult> {
-    return this.model.updateMany(filter, update, options).exec();
+  
+  async updateMany({ where, data, manager }: { where: FindOptionsWhere<T>; data: QueryDeepPartialEntity<T> } & Tx): Promise<UpdateResult> {
+    return this.repo(manager).update(where, data);
   }
 
+  
   async findOneAndUpdate({
-    filter,
-    update,
-    options = {},
-    populate = [],
-  }: {
-    filter: QueryFilter<T>;
-    update: UpdateQuery<T>;
-    options?: QueryOptions<T>;
-    populate?: PopulateOptions[];
-  }) {
-    return this.model
-      .findOneAndUpdate(
-        filter,
-        {
-          ...update,
-          $inc: {
-            ...update.$inc,
-            __v: 1,
-          },
-        },
-        {
-          new: true,
-          runValidators: true,
-          ...options,
-        },
-      )
-      .populate(populate)
-      .exec();
+    where,
+    data,
+    options,
+    manager,
+  }: { where: Where<T>; data: DeepPartial<T>; options?: ReadOptions<T> } & Tx): Promise<T | null> {
+    const repo = this.repo(manager);
+    const entity = await repo.findOne({ where, ...options });
+    if (!entity) return null;
+    return repo.save(repo.merge(entity, data));
   }
 
-  async findByIdAndUpdate({ _id, update, options = {} }: { _id: Types.ObjectId | string; update: UpdateQuery<T>; options?: QueryOptions<T> }) {
-    return this.model
-      .findByIdAndUpdate(
-        _id,
-        {
-          ...update,
-          $inc: {
-            ...update.$inc,
-            __v: 1,
-          },
-        },
-        {
-          new: true,
-          runValidators: true,
-          ...options,
-        },
-      )
-      .exec();
+  async findByIdAndUpdate({ id, data, options, manager }: { id: string; data: DeepPartial<T>; options?: ReadOptions<T> } & Tx): Promise<T | null> {
+    return this.findOneAndUpdate({ where: this.byId(id), data, options, manager });
   }
 
-  async deleteOne({ filter }: { filter: QueryFilter<T> }): Promise<DeleteResult> {
-    return this.model.deleteOne(filter).exec();
+  // ---------- delete ----------
+
+  async deleteOne({ where, manager }: { where: Where<T> } & Tx): Promise<DeleteResult> {
+    const repo = this.repo(manager);
+    const row = await repo.findOne({ where, select: { id: true } as FindOptionsSelect<T> });
+    if (!row) return { raw: [], affected: 0 };
+    return repo.delete(row.id);
   }
 
-  async deleteMany({ filter }: { filter: QueryFilter<T> }): Promise<DeleteResult> {
-    return this.model.deleteMany(filter).exec();
+  
+  async deleteMany({ where, manager }: { where: FindOptionsWhere<T> } & Tx): Promise<DeleteResult> {
+    return this.repo(manager).delete(where);
   }
 
-  async findOneAndDelete({ filter }: { filter: QueryFilter<T> }) {
-    return this.model.findOneAndDelete(filter).exec();
+  
+  async findOneAndDelete({ where, options, manager }: { where: Where<T>; options?: ReadOptions<T> } & Tx): Promise<T | null> {
+    const repo = this.repo(manager);
+    const entity = await repo.findOne({ where, ...options });
+    if (!entity) return null;
+    await repo.delete(entity.id);
+    return entity;
   }
 
-  async findByIdAndDelete({ _id }: { _id: Types.ObjectId | string }) {
-    return this.model.findByIdAndDelete(_id).exec();
+  async findByIdAndDelete({ id, manager }: { id: string } & Tx): Promise<T | null> {
+    return this.findOneAndDelete({ where: this.byId(id), manager });
   }
 }
