@@ -25,11 +25,8 @@ export class SecurityService {
 
   encrypt(value: string): string {
     const iv = randomBytes(12);
-
     const cipher = createCipheriv(this.algorithm, this.key, iv);
-
     const encrypted = Buffer.concat([cipher.update(value, 'utf8'), cipher.final()]);
-
     const authTag = cipher.getAuthTag();
 
     return [iv.toString('base64'), authTag.toString('base64'), encrypted.toString('base64')].join(':');
@@ -43,7 +40,6 @@ export class SecurityService {
     }
 
     const [ivString, authTagString, dataString] = parts;
-
     const iv = Buffer.from(ivString, 'base64');
     const authTag = Buffer.from(authTagString, 'base64');
     const encrypted = Buffer.from(dataString, 'base64');
@@ -53,9 +49,7 @@ export class SecurityService {
     }
 
     const decipher = createDecipheriv(this.algorithm, this.key, iv);
-
     decipher.setAuthTag(authTag);
-
     const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
 
     return decrypted.toString('utf8');

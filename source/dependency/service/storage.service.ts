@@ -15,7 +15,7 @@ export class StorageService {
     config: ConfigService,
     private readonly security: SecurityService,
   ) {
-    const directory = config.get<string>('storage.directory', 'storage');
+    const directory = config.get<string>('storage.directory', 'assets');
     this.root = isAbsolute(directory) ? directory : resolve(process.cwd(), directory);
 
     SignedUrl.configure(
