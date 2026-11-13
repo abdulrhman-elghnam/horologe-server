@@ -12,8 +12,9 @@ export class UserService {
     return 'This action adds a new user';
   }
 
-  findAll() {
-    return this.user.find();
+  async findAll() {
+   const data = await this.user.find()
+    return ;
   }
 
   findOne(id: number) {

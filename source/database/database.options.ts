@@ -1,5 +1,4 @@
 import { join } from 'node:path';
-
 import type { PostgresConnectionOptions } from 'typeorm/driver/postgres/PostgresConnectionOptions.js';
 
 export interface DatabaseConfig {
@@ -13,7 +12,6 @@ export interface DatabaseConfig {
   logging?: boolean;
 }
 
-// Shared by DatabaseModule (runtime) and data-source.ts (TypeORM CLI) so both hit the same database.
 export const databaseOptions = (db: DatabaseConfig): PostgresConnectionOptions => ({
   type: 'postgres',
   host: db.host,
@@ -24,6 +22,5 @@ export const databaseOptions = (db: DatabaseConfig): PostgresConnectionOptions =
   ssl: db.ssl ? { rejectUnauthorized: false } : false,
   synchronize: db.synchronize ?? false,
   logging: db.logging ?? false,
-  // Compiled migrations, resolved relative to this file inside distribution/.
   migrations: [join(import.meta.dirname, 'migration', '*.js')],
 });

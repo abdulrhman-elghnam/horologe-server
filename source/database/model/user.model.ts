@@ -55,11 +55,6 @@ export class User implements IUser {
   @Column({ name: 'email_verified_at', type: 'timestamptz', nullable: true })
   emailVerifiedAt?: Date | null;
 
-
-  @Column({ name: 'consent_accepted_at', type: 'timestamptz', nullable: true })
-  consentAcceptedAt?: Date | null;
-
-
   @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive: boolean;
 
