@@ -6,5 +6,6 @@ import { UserModule } from './user/user.module.js';
 @Module({
   providers: [RealtimeGateway, RealtimeService],
   imports: [UserModule],
+  exports: [RealtimeService],
 })
 export class RealtimeModule {}

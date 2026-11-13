@@ -1,13 +1,13 @@
-import { PipeTransform, Injectable, ArgumentMetadata, BadRequestException } from '@nestjs/common';
+import { PipeTransform, Injectable, BadRequestException } from '@nestjs/common';
 import { ZodType } from 'zod';
 
 @Injectable()
 export class CustomValidationPipe implements PipeTransform {
   constructor(private schema: ZodType) {}
-  transform(value: any, metadata: ArgumentMetadata) {
-    console.log({ value, metadata });
-
-    const { success, error } = this.schema.safeParse(value);
+  // Returns the parsed value, so schema transforms (trim, lowercase, defaults) reach the handler.
+  // Never log `value`: it can contain passwords and tokens.
+  transform(value: unknown) {
+    const { success, data, error } = this.schema.safeParse(value);
     if (!success) {
       throw new BadRequestException({
         message: 'Validation Error',
@@ -18,6 +18,6 @@ export class CustomValidationPipe implements PipeTransform {
         },
       });
     }
-    return value;
+    return data;
   }
 }

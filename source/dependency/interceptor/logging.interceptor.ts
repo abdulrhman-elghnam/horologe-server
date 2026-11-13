@@ -21,16 +21,6 @@ export class LoggingInterceptor implements NestInterceptor {
         url = req.originalUrl ?? req.url;
         break;
       }
-
-      // case 'graphql': {
-      //   const gqlContext = GqlExecutionContext.create(context);
-      //   const info = gqlContext.getInfo();
-
-      //   method = info.operation.operation.toUpperCase();
-      //   url = info.fieldName;
-      //   break;
-      // }
-
       case 'ws': {
         const wsContext = context.switchToWs();
         const data = wsContext.getData();

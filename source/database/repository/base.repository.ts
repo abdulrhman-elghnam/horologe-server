@@ -48,7 +48,6 @@ export abstract class DatabaseRepository<T extends ObjectLiteral & { id: string 
     return { id } as FindOptionsWhere<T>;
   }
 
-
   async create({ data, manager }: { data: DeepPartial<T> } & Tx): Promise<T> {
     const repo = this.repo(manager);
     return repo.save(repo.create(data));
@@ -59,7 +58,6 @@ export abstract class DatabaseRepository<T extends ObjectLiteral & { id: string 
     return repo.save(repo.create(data));
   }
 
-
   async findById({ id, options, manager }: { id: string; options?: ReadOptions<T> } & Tx): Promise<T | null> {
     return this.repo(manager).findOne({ where: this.byId(id), ...options });
   }
@@ -68,13 +66,7 @@ export abstract class DatabaseRepository<T extends ObjectLiteral & { id: string 
     return this.repo(manager).findOne({ where, ...options });
   }
 
-  async find({
-    where,
-    options,
-    skip,
-    take,
-    manager,
-  }: { where?: Where<T>; options?: ReadOptions<T>; skip?: number; take?: number } & Tx = {}): Promise<T[]> {
+  async find({ where, options, skip, take, manager }: { where?: Where<T>; options?: ReadOptions<T>; skip?: number; take?: number } & Tx = {}): Promise<T[]> {
     return this.repo(manager).find({ where, ...options, skip, take });
   }
 
@@ -113,18 +105,11 @@ export abstract class DatabaseRepository<T extends ObjectLiteral & { id: string 
     return repo.update(row.id, data);
   }
 
-  
   async updateMany({ where, data, manager }: { where: FindOptionsWhere<T>; data: QueryDeepPartialEntity<T> } & Tx): Promise<UpdateResult> {
     return this.repo(manager).update(where, data);
   }
 
-  
-  async findOneAndUpdate({
-    where,
-    data,
-    options,
-    manager,
-  }: { where: Where<T>; data: DeepPartial<T>; options?: ReadOptions<T> } & Tx): Promise<T | null> {
+  async findOneAndUpdate({ where, data, options, manager }: { where: Where<T>; data: DeepPartial<T>; options?: ReadOptions<T> } & Tx): Promise<T | null> {
     const repo = this.repo(manager);
     const entity = await repo.findOne({ where, ...options });
     if (!entity) return null;
@@ -135,7 +120,6 @@ export abstract class DatabaseRepository<T extends ObjectLiteral & { id: string 
     return this.findOneAndUpdate({ where: this.byId(id), data, options, manager });
   }
 
-
   async deleteOne({ where, manager }: { where: Where<T> } & Tx): Promise<DeleteResult> {
     const repo = this.repo(manager);
     const row = await repo.findOne({ where, select: { id: true } as FindOptionsSelect<T> });
@@ -143,12 +127,10 @@ export abstract class DatabaseRepository<T extends ObjectLiteral & { id: string 
     return repo.delete(row.id);
   }
 
-  
   async deleteMany({ where, manager }: { where: FindOptionsWhere<T> } & Tx): Promise<DeleteResult> {
     return this.repo(manager).delete(where);
   }
 
-  
   async findOneAndDelete({ where, options, manager }: { where: Where<T>; options?: ReadOptions<T> } & Tx): Promise<T | null> {
     const repo = this.repo(manager);
     const entity = await repo.findOne({ where, ...options });

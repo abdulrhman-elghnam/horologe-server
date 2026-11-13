@@ -4,7 +4,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '../../database/model/_INDEX.js';
 import { UserRepository } from '../../database/repository/_INDEX.js';
 
-
 const ENTITIES = [User];
 const REPOSITORIES = [UserRepository];
 

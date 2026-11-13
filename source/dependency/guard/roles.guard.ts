@@ -4,8 +4,17 @@ import { roleName } from '../decorator/role.decorator.js';
 import { SystemRoleEnum } from '../value/security.enum.js';
 import type { IAuthReq, IAuthSocket } from '../interface/ctx.interface.js';
 
-export const matchRoles = (requiredRoles: SystemRoleEnum[], userRole: SystemRoleEnum | undefined): boolean =>
-  !requiredRoles.length || (!!userRole && requiredRoles.includes(userRole));
+/** SUPER_ADMIN can do everything ADMIN can, so [ADMIN] routes don't need to list both. */
+const IMPLIED_ROLES: Partial<Record<SystemRoleEnum, SystemRoleEnum[]>> = {
+  [SystemRoleEnum.SUPER_ADMIN]: [SystemRoleEnum.ADMIN],
+};
+
+export const matchRoles = (requiredRoles: SystemRoleEnum[], userRole: SystemRoleEnum | undefined): boolean => {
+  if (!requiredRoles.length) return true;
+  if (!userRole) return false;
+  const held = [userRole, ...(IMPLIED_ROLES[userRole] ?? [])];
+  return requiredRoles.some((role) => held.includes(role));
+};
 
 @Injectable()
 export class RolesGuard implements CanActivate {

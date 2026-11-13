@@ -27,13 +27,18 @@ export class UserRepository extends DatabaseRepository<User> {
   createAuthUser(data: Partial<IUser>): Promise<User> {
     return this.userRepository.save(this.userRepository.create(data));
   }
-  
+
   findByEmail(email: string): Promise<User | null> {
     return this.userRepository
       .createQueryBuilder('user')
       .addSelect(['user.passwordHash', 'user.googleId'])
       .where('user.email = :email', { email: normalizeEmail(email) })
       .getOne();
+  }
+
+  /** Loads the user including the password hash (select: false by default). */
+  findByIdWithPassword(id: string): Promise<User | null> {
+    return this.userRepository.createQueryBuilder('user').addSelect('user.passwordHash').where('user.id = :id', { id }).getOne();
   }
 
   findByEmailWithoutPassword(email: string): Promise<User | null> {

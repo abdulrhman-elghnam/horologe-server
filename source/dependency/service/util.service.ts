@@ -8,6 +8,10 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3
 
 export const isUuid = (value: unknown): value is string => typeof value === 'string' && UUID_PATTERN.test(value);
 
+/** True for a Postgres unique-constraint violation (e.g. duplicate email), raised by TypeORM as QueryFailedError. */
+export const isUniqueViolation = (error: unknown): boolean =>
+  typeof error === 'object' && error !== null && (error as { driverError?: { code?: string } }).driverError?.code === '23505';
+
 export const escapeLike = (value: string) => value.replace(/[\\%_]/g, '\\$&');
 
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -36,7 +40,6 @@ export class UtilService {
       .replace(/^-+|-+$/g, '');
 
   createNumberOtp = (): number => randomInt(100_000, 1_000_000);
-
 
   createReferenceCode = (prefix: string, length = 6): string => {
     let code = '';

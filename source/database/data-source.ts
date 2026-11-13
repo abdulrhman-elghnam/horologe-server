@@ -4,7 +4,6 @@ import configuration from '../app.configuration.js';
 import { databaseOptions, type DatabaseConfig } from './database.options.js';
 import * as entities from './model/_INDEX.js';
 
-
 const env = process.env.NODE_ENV ?? 'development';
 try {
   process.loadEnvFile(`.env.${env}`);

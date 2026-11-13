@@ -4,6 +4,7 @@ const toInt = (value: string | undefined, fallback: number) => parseInt(value ??
 
 export default () => ({
   app: {
+    name: process.env.APP_NAME ?? 'Horologe',
     port: toInt(process.env.PORT, 3000),
     corsOrigin: (process.env.CORS_ORIGIN ?? process.env.FRONTEND_URL ?? 'http://localhost:3000')
       .split(',')
@@ -33,6 +34,13 @@ export default () => ({
   google: {
     clientId: process.env.GOOGLE_CLIENT_ID ?? process.env.OAUTH_GOOGLE_CLIENT_ID,
   },
+  admin: {
+    // Bootstrap super admin, created on startup if no SUPER_ADMIN exists yet.
+    email: process.env.ADMIN_EMAIL,
+    password: process.env.ADMIN_PASSWORD,
+    name: process.env.ADMIN_NAME ?? 'Super Admin',
+    city: process.env.ADMIN_CITY ?? 'Cairo',
+  },
   auth: {
     issuer: process.env.AUTH_ISSUER,
   },
@@ -42,7 +50,7 @@ export default () => ({
     secure: process.env.SMTP_SECURE === 'true',
     user: process.env.SMTP_USER ?? process.env.APP_MAIL,
     password: process.env.SMTP_PASSWORD ?? process.env.APP_PASSWORD,
-    from: process.env.MAIL_FROM ?? (process.env.APP_MAIL ? `"${process.env.APP_NAME ?? 'RetinaCare'}" <${process.env.APP_MAIL}>` : undefined),
+    from: process.env.MAIL_FROM ?? (process.env.APP_MAIL ? `"${process.env.APP_NAME ?? 'Horologe'}" <${process.env.APP_MAIL}>` : undefined),
   },
   storage: {
     directory: process.env.STORAGE_DIR ?? 'storage',

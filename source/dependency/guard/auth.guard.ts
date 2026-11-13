@@ -28,14 +28,6 @@ export class AuthGuard implements CanActivate {
         authorization = req.headers.authorization;
         break;
       }
-
-      // case 'graphql': {
-      //   const gqlContext = GqlExecutionContext.create(context);
-      //   req = gqlContext.getContext<{ req: IAuthReq }>().req;
-      //   authorization = req?.headers?.authorization;
-      //   break;
-      // }
-
       case 'ws': {
         const client = context.switchToWs().getClient<IAuthSocket>();
         req = client;

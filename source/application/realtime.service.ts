@@ -1,22 +1,35 @@
 import { Injectable } from '@nestjs/common';
-import type { Server } from 'socket.io';
+import type { Namespace } from 'socket.io';
 
-export const userRoom = (userId: string) => `user:${userId}`;
-export const conversationRoom = (conversationId: string) => `conversation:${conversationId}`;
+import { RealtimeRoom } from './realtime.event.js';
 
 @Injectable()
 export class RealtimeService {
-  private server?: Server;
+  private server?: Namespace;
 
-  attach(server: Server) {
+  attach(server: Namespace) {
     this.server = server;
   }
 
   emitToUser(userId: string, event: string, payload: unknown) {
-    this.server?.to(userRoom(userId)).emit(event, payload);
+    this.server?.to(RealtimeRoom.user(userId)).emit(event, payload);
+  }
+
+  emitToAdmins(event: string, payload: unknown) {
+    this.server?.to(RealtimeRoom.admins).emit(event, payload);
   }
 
   emitToRoom(room: string, event: string, payload: unknown) {
     this.server?.to(room).emit(event, payload);
+  }
+
+  /** Closes sockets opened with a session's tokens (after logout / session revoke). */
+  disconnectSession(sessionId: string) {
+    this.server?.in(RealtimeRoom.session(sessionId)).disconnectSockets(true);
+  }
+
+  /** Closes every socket of a user (after password reset / logout from all devices / account disabled). */
+  disconnectUser(userId: string) {
+    this.server?.in(RealtimeRoom.user(userId)).disconnectSockets(true);
   }
 }

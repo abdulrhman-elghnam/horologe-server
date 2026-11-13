@@ -47,7 +47,6 @@ export class User implements IUser {
   @Column({ type: 'enum', enum: AuthProviderEnum, enumName: 'auth_provider', default: AuthProviderEnum.SYSTEM })
   provider: AuthProviderEnum;
 
-
   @Index({ unique: true })
   @Column({ name: 'google_id', type: 'varchar', nullable: true, select: false })
   googleId?: string | null;
@@ -66,7 +65,6 @@ export class User implements IUser {
 
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt: Date;
-
 
   @VersionColumn()
   version: number;

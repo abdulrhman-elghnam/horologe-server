@@ -6,7 +6,7 @@ import { Observable, of, tap } from 'rxjs';
 
 import { I18nContext } from '@nestjs/i18n';
 import type { IAuthReq } from '../interface/ctx.interface.js';
-import { CacheService } from '../service/cache.service.js';
+import { CacheService, RedisKeys } from '../service/cache.service.js';
 
 @Injectable()
 export class CacheInterceptor implements NestInterceptor {
@@ -26,10 +26,13 @@ export class CacheInterceptor implements NestInterceptor {
     const request = httpContext.getRequest<Request & Partial<IAuthReq>>();
     const response = httpContext.getResponse<Response>();
 
-    if (request.method !== 'GET' || request.headers.authorization || request.credentials || request.user) next.handle();
+    // Only cache anonymous GETs: per-user responses must never be served to someone else.
+    if (request.method !== 'GET' || request.headers.authorization || request.credentials || request.user) {
+      return next.handle();
+    }
 
     const language = this.i18n.locale;
-    const key = `http-cache:${language}:${request.originalUrl}`;
+    const key = RedisKeys.httpCache(language, request.originalUrl);
 
     try {
       const cached = await this.cacheService.getCache({ key });

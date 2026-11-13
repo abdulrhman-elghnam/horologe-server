@@ -18,7 +18,6 @@ export interface IUser extends Timestamps {
   provider?: AuthProviderEnum;
   googleId?: string | null;
   emailVerifiedAt?: Date | null;
-  consentAcceptedAt?: Date | null;
   isActive?: boolean;
   language?: 'en' | 'ar' | null;
 }
