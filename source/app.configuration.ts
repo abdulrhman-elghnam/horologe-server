@@ -35,7 +35,6 @@ export default () => ({
     clientId: process.env.GOOGLE_CLIENT_ID ?? process.env.OAUTH_GOOGLE_CLIENT_ID,
   },
   admin: {
-    // Bootstrap super admin, created on startup if no SUPER_ADMIN exists yet.
     email: process.env.ADMIN_EMAIL,
     password: process.env.ADMIN_PASSWORD,
     name: process.env.ADMIN_NAME ?? 'Super Admin',

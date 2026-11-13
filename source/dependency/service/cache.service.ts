@@ -59,9 +59,7 @@ export const RedisKeys = {
   passwordReset: (tokenHash: string) => `auth:password-reset:${tokenHash}`,
   rateLimitKey: (scope: string, id: string) => `rate:${scope}:${id}`,
   emailVerificationAttempts: (email: string) => `auth:email-verification-attempts:${normalizeEmail(email)}`,
-  /** Hash holding one login session (access/refresh jti, device info). */
   session: (userId: string, sessionId: string) => `auth:session:${userId}:${sessionId}`,
-  /** Set of a user's session ids, so sessions can be listed/revoked without SCAN. */
   userSessions: (userId: string) => `auth:sessions:${userId}`,
   httpCache: (language: string, url: string) => `http-cache:${language}:${url}`,
 } as const;

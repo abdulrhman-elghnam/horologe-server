@@ -23,12 +23,10 @@ export class RealtimeService {
     this.server?.to(room).emit(event, payload);
   }
 
-  /** Closes sockets opened with a session's tokens (after logout / session revoke). */
   disconnectSession(sessionId: string) {
     this.server?.in(RealtimeRoom.session(sessionId)).disconnectSockets(true);
   }
 
-  /** Closes every socket of a user (after password reset / logout from all devices / account disabled). */
   disconnectUser(userId: string) {
     this.server?.in(RealtimeRoom.user(userId)).disconnectSockets(true);
   }

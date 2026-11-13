@@ -11,7 +11,7 @@ import { TokenEnum } from '../../dependency/value/security.enum.js';
 import type { IAuthReq } from '../../dependency/interface/ctx.interface.js';
 
 const clientOf = (request: Request): SessionClient => ({
-  ip: request.ip,
+ip: request.ip,
   userAgent: request.headers['user-agent'],
 });
 
