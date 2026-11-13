@@ -13,13 +13,11 @@ import {
   type ValidationOptions,
 } from 'class-validator';
 
-// The global ValidationPipe runs with `whitelist: true`, so fields without a decorator here
-// (e.g. `role`, `isActive`, `emailVerifiedAt`) are stripped before they reach the service.
 
 const trim = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value);
 const trimLower = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim().toLowerCase() : value);
 
-/** bcrypt only uses the first 72 bytes, so limit by bytes (not characters) to avoid silently ignored input. */
+
 const MaxBytes = (max: number, options?: ValidationOptions) =>
   ValidateBy(
     {
@@ -33,7 +31,7 @@ const MaxBytes = (max: number, options?: ValidationOptions) =>
     options,
   );
 
-/** Fails when the value equals another property of the same object. */
+
 const NotEqualTo = (property: string, options?: ValidationOptions) =>
   ValidateBy(
     {
@@ -47,7 +45,7 @@ const NotEqualTo = (property: string, options?: ValidationOptions) =>
     options,
   );
 
-/** 8+ characters, at most 72 bytes, at least one letter and one number. */
+
 const NewPassword = (): PropertyDecorator => (target, key) => {
   IsString()(target, key);
   MinLength(8)(target, key);
@@ -55,14 +53,14 @@ const NewPassword = (): PropertyDecorator => (target, key) => {
   Matches(/^(?=.*[A-Za-z])(?=.*\d)/, { message: 'password must contain at least one letter and one number' })(target, key);
 };
 
-/** Trimmed, lowercased, valid email. */
+
 const Email = (): PropertyDecorator => (target, key) => {
   Transform(trimLower)(target, key);
   IsEmail()(target, key);
   MaxLength(254)(target, key);
 };
 
-/** Trimmed, non-empty string up to `max` characters. */
+
 const RequiredText =
   (max: number): PropertyDecorator =>
   (target, key) => {
@@ -140,7 +138,6 @@ export class GoogleCredentialDto {
   @MaxLength(8192)
   idToken!: string;
 
-  /** Required because users.city is NOT NULL; only used when the Google sign-in creates the account. */
   @RequiredText(120)
   city!: string;
 }
