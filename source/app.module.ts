@@ -5,8 +5,9 @@ import { minutes, ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { AuthenticationModule } from './application/authentication/authentication.module.js';
-import { RealtimeModule } from './application/realtime.module.js';
+
 import { CacheModule, ConfigurationModule, DatabaseModule, RepositoryModule, SecurityModule } from './dependency/module/_INDEX.js';
+import { RealtimeModule } from './application/_realtime_/realtime.module.js';
 
 @Module({
   imports: [

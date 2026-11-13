@@ -4,16 +4,14 @@ import type { Namespace, Socket } from 'socket.io';
 
 import { RealtimeEvent, RealtimeRoom } from './realtime.event.js';
 import { RealtimeService } from './realtime.service.js';
-import { TokenService, UtilService } from '../dependency/service/_INDEX.js';
-import { SystemRoleEnum, TokenEnum } from '../dependency/value/security.enum.js';
-import type { IAuthSocket } from '../dependency/interface/ctx.interface.js';
+import { TokenService } from '../../dependency/service/token.service.js';
+import { UtilService } from '../../dependency/service/util.service.js';
+import { SystemRoleEnum, TokenEnum } from '../../dependency/value/security.enum.js';
+import { IAuthSocket } from '../../dependency/interface/ctx.interface.js';
 
 const ADMIN_ROLES = new Set<SystemRoleEnum>([SystemRoleEnum.ADMIN, SystemRoleEnum.SUPER_ADMIN]);
 
-/**
- * Clients connect with `io('<host>/realtime', { auth: { token: '<access token>' } })`.
- * The user and role come only from the verified token, never from client data.
- */
+
 @WebSocketGateway({ namespace: '/realtime', cors: { origin: process.env.FRONTEND_URL?.split(',') ?? true, credentials: true } })
 export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
   private readonly logger = new Logger(RealtimeGateway.name);
@@ -28,7 +26,6 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
     this.realtimeService.attach(server);
   }
 
-  /** Guards don't run on connect, so the handshake token is verified here. */
   async handleConnection(client: Socket) {
     try {
       const raw = this.util.getAuthSocket(client)?.trim();

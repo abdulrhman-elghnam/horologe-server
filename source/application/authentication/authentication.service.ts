@@ -29,8 +29,9 @@ import {
   type SessionView,
 } from '../../dependency/service/_INDEX.js';
 import { AuthProviderEnum, SystemRoleEnum } from '../../dependency/value/security.enum.js';
-import { RealtimeService } from '../realtime.service.js';
+
 import type { ChangePasswordDto, EmailDto, GoogleCredentialDto, LoginDto, RegisterDto, ResetPasswordDto, VerifyEmailDto } from './dto/authentication.dto.js';
+import { RealtimeService } from '../_realtime_/realtime.service.js';
 
 const PASSWORD_RESET_TTL_SECONDS = 15 * 60;
 const EMAIL_OTP_TTL_SECONDS = 10 * 60;
