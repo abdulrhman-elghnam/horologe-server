@@ -1,0 +1,297 @@
+WATCH STORE E-COMMERCE — API ROUTES Architecture: NestJS Modular
+Monolith | MongoDB + Mongoose | REST + Socket.IO Base URL: /api/v1
+
+AUTHENTICATION & CONVENTIONS
+
+Auth header: Authorization: Bearer Roles: GUEST, CUSTOMER, ADMIN,
+
+SUPER_ADMIN Pagination: ?page=1&limit=20&sortBy=createdAt&sortOrder=desc
+Use DTO validation, ownership checks, role guards, rate limits, and
+consistent error responses. Never trust client-supplied userId, role,
+price, discount, stock, or payment status. Use idempotency keys for
+checkout and provider callbacks.
+
+1. AUTH MODULE
+
+POST /auth/register
+POST /auth/login 
+POST /auth/logout 
+
+[AUTH] 
+POST/auth/refresh 
+POST /auth/verify-email
+POST /auth/resend-verification
+POST /auth/forgot-password 
+POST /auth/reset-password 
+POST/auth/change-password 
+
+[AUTH]
+GET /auth/sessions 
+
+[AUTH]
+DELETE/auth/sessions/:sessionId
+[AUTH] DELETE /auth/sessions
+[AUTH] POST/auth/google
+
+2. USERS MODULE
+
+GET /users/me [AUTH] PATCH /users/me [AUTH] PATCH /users/me/avatar
+[AUTH] GET /users/me/addresses [AUTH] POST /users/me/addresses [AUTH]
+GET /users/me/addresses/:addressId [AUTH] PATCH
+/users/me/addresses/:addressId [AUTH] DELETE
+/users/me/addresses/:addressId [AUTH] PATCH
+/users/me/addresses/:addressId/default [AUTH] GET /admin/users [ADMIN]
+GET /admin/users/:userId [ADMIN] PATCH /admin/users/:userId/status
+[ADMIN]
+
+3. BRANDS MODULE
+
+GET /brands [PUBLIC] GET /brands/:slug [PUBLIC] POST /admin/brands
+[ADMIN] PATCH /admin/brands/:brandId [ADMIN] PATCH
+/admin/brands/:brandId/status [ADMIN] DELETE /admin/brands/:brandId
+[ADMIN]
+
+4. CATEGORIES MODULE
+
+GET /categories [PUBLIC] GET /categories/tree [PUBLIC] GET
+/categories/:slug [PUBLIC] POST /admin/categories [ADMIN] PATCH
+/admin/categories/:categoryId [ADMIN] PATCH
+/admin/categories/:categoryId/status [ADMIN] DELETE
+/admin/categories/:categoryId [ADMIN]
+
+5. COLLECTIONS MODULE
+
+GET /collections [PUBLIC] GET /collections/:slug [PUBLIC] POST
+/admin/collections [ADMIN] PATCH /admin/collections/:collectionId
+[ADMIN] PATCH /admin/collections/:collectionId/status [ADMIN] POST
+/admin/collections/:collectionId/watches [ADMIN] DELETE
+/admin/collections/:collectionId/watches/:watchId [ADMIN] DELETE
+/admin/collections/:collectionId [ADMIN]
+
+6. WATCHES / PRODUCT CATALOG
+
+GET /watches [PUBLIC] Query examples:
+?page=1&limit=20&search=casio&brandId=&categoryId=
+&collectionId=&gender=men&movement=automatic
+&minPrice=100&maxPrice=1000&sortBy=price&sortOrder=asc GET
+/watches/featured [PUBLIC] GET /watches/new-arrivals [PUBLIC] GET
+/watches/best-sellers [PUBLIC] GET /watches/:slug [PUBLIC] POST
+/admin/watches [ADMIN] PATCH /admin/watches/:watchId [ADMIN] DELETE
+/admin/watches/:watchId [ADMIN] PATCH /admin/watches/:watchId/status
+[ADMIN] POST /admin/watches/:watchId/images [ADMIN] DELETE
+/admin/watches/:watchId/images/:imageId [ADMIN] POST
+/admin/watches/:watchId/variants [ADMIN] PATCH
+/admin/watches/:watchId/variants/:variantId [ADMIN] PATCH
+/admin/watches/:watchId/variants/:variantId/price [ADMIN] PATCH
+/admin/watches/:watchId/variants/:variantId/status [ADMIN] DELETE
+/admin/watches/:watchId/variants/:variantId [ADMIN]
+
+7. INVENTORY MODULE
+
+GET /admin/inventory [ADMIN] GET /admin/inventory/low-stock [ADMIN] GET
+/admin/inventory/variants/:variantId [ADMIN] GET
+/admin/inventory/variants/:variantId/movements [ADMIN] POST
+/admin/inventory/adjustments [ADMIN] PATCH
+/admin/inventory/variants/:variantId/threshold [ADMIN]
+
+Internal service operations (not public endpoints): reserveStock(items,
+referenceId) releaseStock(items, referenceId)
+confirmReservedStock(items, referenceId) checkAvailability(items) Use
+atomic conditional updates to prevent overselling.
+
+8. CART MODULE
+
+GET /cart [AUTH] POST /cart/items [AUTH] Body: { variantId, quantity }
+PATCH /cart/items/:itemId [AUTH] DELETE /cart/items/:itemId [AUTH]
+DELETE /cart [AUTH] Revalidate variant status, availability, and current
+price at checkout.
+
+9. WISHLIST MODULE
+
+GET /wishlist [AUTH] POST /wishlist/items [AUTH] Body: { watchId }
+DELETE /wishlist/items/:watchId [AUTH] DELETE /wishlist [AUTH]
+
+10. COMPARE MODULE
+
+GET /compare [AUTH] POST /compare/items [AUTH] Body: { watchId } DELETE
+/compare/items/:watchId [AUTH] DELETE /compare [AUTH]
+
+11. COUPONS MODULE
+
+CUSTOMER: POST /coupons/validate [AUTH] Body: { “code”: “WATCH20” }
+Validate coupon against current cart/checkout. Do not trust client
+discount.
+
+ADMIN: GET /admin/coupons [ADMIN] GET /admin/coupons/:couponId [ADMIN]
+POST /admin/coupons [ADMIN] PATCH /admin/coupons/:couponId [ADMIN] PATCH
+/admin/coupons/:couponId/activate [ADMIN] PATCH
+/admin/coupons/:couponId/deactivate [ADMIN] GET
+/admin/coupons/:couponId/usages [ADMIN] DELETE /admin/coupons/:couponId
+[ADMIN]
+
+Suggested create body: { “code”: “WATCH20”, “description”: “20 percent
+off”, “discountType”: “percentage”, “discountValue”: 20,
+“minOrderAmount”: 100, “maxDiscount”: 50, “usageLimit”: 500,
+“perUserLimit”: 1, “startDate”: “2026-11-13T00:00:00.000Z”, “endDate”:
+“2026-12-31T23:59:59.000Z”, “firstOrderOnly”: false, “isActive”: true }
+Discount types: percentage, fixed_amount. Rules: validate active status,
+validity period, global/per-user limits, minimum order, eligible
+products/categories, and first-order eligibility. Percentage:
+min(subtotal * rate, maxDiscount) when cap exists. Fixed amount:
+min(discountValue, eligibleSubtotal). Reserve coupon capacity during
+checkout when limits require concurrency protection. Confirm usage after
+successful payment; release on failed/expired checkout. Store couponCode
+and discount snapshot on the Order.
+
+12. ORDERS MODULE
+
+POST /orders/checkout [AUTH] Validate
+cart/prices/address/shipping/coupon, reserve stock, create pending
+order. Support Idempotency-Key. GET /orders/my-orders [AUTH] GET
+/orders/:orderId [AUTH + OWNERSHIP] POST /orders/:orderId/cancel [AUTH +
+OWNERSHIP] POST /orders/:orderId/return [AUTH + OWNERSHIP] GET
+/admin/orders [ADMIN] GET /admin/orders/:orderId [ADMIN] PATCH
+/admin/orders/:orderId/status [ADMIN] POST /admin/orders/:orderId/cancel
+[ADMIN]
+
+Suggested order statuses: PENDING, CONFIRMED, PROCESSING, SHIPPED,
+DELIVERED, CANCELLED, RETURN_REQUESTED, RETURNED. Payment statuses:
+PENDING, SUCCEEDED, FAILED, REFUNDED.
+
+13. PAYMENTS MODULE
+
+POST /payments/initialize [AUTH] GET /payments/:paymentId [AUTH + ORDER
+OWNERSHIP] POST /payments/webhooks/:provider [PROVIDER CALLBACK] POST
+/admin/payments/:paymentId/refund [ADMIN] Verify webhook signature,
+amount, currency, order reference, and provider transaction ID. Handle
+duplicate webhooks idempotently. Never confirm payment based only on
+frontend redirect. Do not hold MongoDB transactions open while calling
+external payment providers.
+
+14. SHIPPING MODULE
+
+GET /shipping/methods [PUBLIC] POST /shipping/calculate [AUTH] GET
+/shipping/track/:trackingNumber [PUBLIC or AUTH by privacy policy] GET
+/admin/shipments [ADMIN] GET /admin/shipments/:shipmentId [ADMIN] POST
+/admin/shipments [ADMIN] PATCH /admin/shipments/:shipmentId/status
+[ADMIN] POST /shipping/webhooks/:provider [PROVIDER CALLBACK] Verify
+provider webhook signature. Shipment statuses: PENDING,
+READY_FOR_PICKUP, PICKED_UP, IN_TRANSIT, OUT_FOR_DELIVERY, DELIVERED,
+FAILED, RETURNED.
+
+15. REVIEWS MODULE
+
+GET /watches/:watchId/reviews [PUBLIC] POST /watches/:watchId/reviews
+[AUTH] PATCH /reviews/:reviewId [AUTH + OWNERSHIP] DELETE
+/reviews/:reviewId [AUTH + OWNERSHIP or ADMIN] GET /admin/reviews
+[ADMIN] PATCH /admin/reviews/:reviewId/approve [ADMIN] PATCH
+/admin/reviews/:reviewId/reject [ADMIN] Optionally require a delivered
+order to create a verified-purchase review.
+
+16. NOTIFICATIONS MODULE
+
+GET /notifications [AUTH] GET /notifications/unread-count [AUTH] PATCH
+/notifications/:notificationId/read [AUTH + OWNERSHIP] PATCH
+/notifications/read-all [AUTH] DELETE /notifications/:notificationId
+[AUTH + OWNERSHIP] DELETE /notifications [AUTH] Persist notifications in
+MongoDB; use Socket.IO for live delivery.
+
+17. ADMIN DASHBOARD & REPORTS
+
+GET /admin/dashboard/summary [ADMIN] GET /admin/reports/sales [ADMIN]
+GET /admin/reports/orders [ADMIN] GET /admin/reports/products [ADMIN]
+GET /admin/reports/inventory [ADMIN] GET /admin/reports/customers
+[ADMIN]
+
+18. SUPER ADMIN & AUDIT LOGS
+
+GET /super-admin/admins [SUPER_ADMIN] POST /super-admin/admins
+[SUPER_ADMIN] GET /super-admin/admins/:adminId [SUPER_ADMIN] PATCH
+/super-admin/admins/:adminId [SUPER_ADMIN] PATCH
+/super-admin/admins/:adminId/status [SUPER_ADMIN] GET
+/super-admin/audit-logs [SUPER_ADMIN] GET /super-admin/audit-logs/:logId
+[SUPER_ADMIN]
+
+19. SOCKET.IO REAL-TIME API
+
+Namespace: /realtime Authentication: JWT in Socket.IO handshake auth
+payload. Example: io(“https://api.example.com/realtime”, { auth: {
+token: “” } })
+
+Rooms: user:{userId} Private user room admins Authorized admins
+admin:{adminId} Private admin room order:{orderId} Authorized order
+subscribers watch:{watchId} Optional watch updates
+
+Client -> Server: order:subscribe order:unsubscribe inventory:subscribe
+inventory:unsubscribe watch:subscribe watch:unsubscribe
+
+Server -> Client: realtime:ready realtime:error order:created
+order:confirmed order:processing order:shipped order:delivered
+order:cancelled order:status-updated payment:pending payment:succeeded
+payment:failed payment:refunded shipment:created shipment:status-updated
+shipment:delivered inventory:updated inventory:low-stock
+inventory:out-of-stock inventory:back-in-stock watch:price-updated
+watch:price-dropped notification:new notification:read
+notification:count-updated
+
+Admin events: admin:order:new admin:order:updated admin:payment:failed
+admin:inventory:low-stock admin:review:new admin:customer:new
+
+Socket security: - Derive userId and role from verified JWT, never
+client claims. - Authorize every room join; verify order ownership. -
+Restrict admin rooms by role. - Validate payloads and rate-limit client
+events. - Clients must not emit trusted events such as payment:succeeded
+or order:delivered. - Use Redis Socket.IO adapter for multiple backend
+instances. - Consider transactional outbox for reliable event delivery.
+
+20. CHECKOUT BUSINESS FLOW
+
+1.  Authenticate customer and load cart.
+2.  Revalidate products, variants, prices, and quantities.
+3.  Validate address, shipping method, and coupon on the server.
+4.  Start MongoDB transaction.
+5.  Atomically reserve stock.
+6.  Reserve coupon capacity when applicable.
+7.  Create PENDING order with immutable item/address/discount snapshots.
+8.  Commit transaction.
+9.  Initialize payment with provider.
+10. Verify signed provider webhook.
+11. On success: mark payment succeeded, confirm order, finalize stock,
+    confirm coupon usage, create shipment workflow, persist
+    notification, then publish real-time events.
+12. On failure/expiry: fail/expire order, release stock and coupon
+    reservations, and notify customer.
+
+Inventory quantity model: - availableQuantity = units available for new
+purchases. - reservedQuantity = units reserved by pending checkouts. -
+Reserve: available -= quantity; reserved += quantity. - Payment success:
+reserved -= quantity (units are sold). - Release: reserved -= quantity;
+available += quantity. Use atomic updates and an expiry job. MongoDB
+multi-document transactions require a replica set.
+
+21. SUGGESTED NESTJS MODULE STRUCTURE
+
+src/ modules/ auth/ users/ brands/ categories/ collections/ watches/
+inventory/ cart/ wishlist/ compare/ coupons/ orders/ payments/ shipping/
+reviews/ notifications/ admin/ realtime/ common/ decorators/ guards/
+interceptors/ filters/ pipes/ dto/ enums/ infrastructure/ database/
+redis/ storage/ mail/ payment-providers/ shipping-providers/ queues/
+app.module.ts main.ts
+
+22. IMPLEMENTATION CHECKLIST
+
+-   Validate every REST and Socket.IO payload with DTOs/schemas.
+-   Enforce authentication, roles, and resource ownership.
+-   Keep business logic in services, not controllers or gateways.
+-   Keep payment/shipping providers behind adapter interfaces.
+-   Use MongoDB replica set transactions for checkout operations.
+-   Use atomic stock updates to prevent overselling.
+-   Use idempotency for checkout and webhook processing.
+-   Persist notifications before emitting Socket.IO events.
+-   Add indexes for email, slug, SKU, orderNumber, userId + createdAt,
+    coupon code, and unread notification queries.
+-   Never store plain-text passwords, OTPs, or refresh tokens.
+-   Keep payment and webhook secrets in environment variables.
+-   Record sensitive admin operations in audit logs.
+
+END OF DOCUMENT

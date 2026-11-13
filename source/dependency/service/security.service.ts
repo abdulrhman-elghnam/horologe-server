@@ -79,6 +79,7 @@ export class SecurityService {
     return Buffer.concat([decipher.update(payload.subarray(28)), decipher.final()]);
   }
 
+  
   async hash(value: string): Promise<string> {
     return bcrypt.hash(value, this.saltRounds);
   }
