@@ -3,6 +3,18 @@
   "collection": "@nestjs/schematics",
   "sourceRoot": "source",
   "compilerOptions": {
-    "deleteOutDir": true
+    "deleteOutDir": true,
+    "plugins": [
+      {
+        "name": "@nestjs/swagger",
+        "options": {
+          "classValidatorShim": true,
+          "introspectComments": true,
+          "dtoFileNameSuffix": [".dto.ts", ".model.ts"],
+          "controllerFileNameSuffix": [".controller.ts"],
+          "esmCompatible": true
+        }
+      }
+    ]
   }
 }

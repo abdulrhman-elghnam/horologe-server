@@ -42,14 +42,3 @@ export interface GetOrSetCache<T> extends CacheKey {
   ttl: number;
   factory: () => Promise<T>;
 }
-
-export interface RateLimit extends CacheKey {
-  limit: number;
-  windowSeconds: number;
-}
-
-export interface RateLimitResult {
-  allowed: boolean;
-  remaining: number;
-  retryAfter: number;
-}

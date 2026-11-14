@@ -1,14 +1,4 @@
-import type {
-  SetCache,
-  CacheKey,
-  ExpireCache,
-  IncrementCache,
-  FindCacheKeys,
-  DeleteManyCache,
-  GetOrSetCache,
-  RateLimit,
-  RateLimitResult,
-} from './../interface/redis.interface.js';
+import type { SetCache, CacheKey, ExpireCache, IncrementCache, FindCacheKeys, DeleteManyCache, GetOrSetCache } from './../interface/redis.interface.js';
 
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { Redis, Result } from 'ioredis';
@@ -22,15 +12,6 @@ if tonumber(ARGV[2]) > 0 and redis.call('TTL', KEYS[1]) < 0 then
   redis.call('EXPIRE', KEYS[1], ARGV[2])
 end
 return v`,
-  // Fixed-window counter: returns { count, secondsUntilReset }.
-  rateLimit: `
-local c = redis.call('INCR', KEYS[1])
-local ttl = redis.call('TTL', KEYS[1])
-if ttl < 0 then
-  redis.call('EXPIRE', KEYS[1], ARGV[1])
-  ttl = tonumber(ARGV[1])
-end
-return { c, ttl }`,
   // Atomically update a hash only if `field` still equals `expected`.
   // ARGV: field, expected, ttlSeconds (0 = keep), then field/value pairs to write.
   // Returns 1 updated, 0 mismatch, -1 missing key.
@@ -46,22 +27,28 @@ return 1`,
 declare module 'ioredis' {
   interface RedisCommander<Context> {
     incrWithTtl(key: string, amount: number, ttl: number): Result<number, Context>;
-    rateLimit(key: string, windowSeconds: number): Result<[number, number], Context>;
     hashCompareAndSet(key: string, field: string, expected: string, ttl: number, ...pairs: string[]): Result<number, Context>;
   }
 }
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
+/**
+ * Every Redis key the app uses. Redis holds only short-lived session and user-interaction state;
+ * business data lives in Postgres.
+ */
 export const RedisKeys = {
-  otpKey: (email: string) => `otp:${normalizeEmail(email)}`,
+  // ── Auth & sessions ──
   emailVerification: (email: string) => `auth:email-verification:${normalizeEmail(email)}`,
   passwordReset: (tokenHash: string) => `auth:password-reset:${tokenHash}`,
-  rateLimitKey: (scope: string, id: string) => `rate:${scope}:${id}`,
   emailVerificationAttempts: (email: string) => `auth:email-verification-attempts:${normalizeEmail(email)}`,
   session: (userId: string, sessionId: string) => `auth:session:${userId}:${sessionId}`,
   userSessions: (userId: string) => `auth:sessions:${userId}`,
-  httpCache: (language: string, url: string) => `http-cache:${language}:${url}`,
+  // ── User interaction ──
+  /** Number of open Socket.IO connections of a user (presence). */
+  socketPresence: (userId: string) => `realtime:presence:${userId}`,
+  /** Cached unread-notification count; Postgres is the source of truth. */
+  unreadNotifications: (userId: string) => `notifications:unread:${userId}`,
 } as const;
 
 const assertPositiveInt = (name: string, value: number) => {
@@ -241,19 +228,6 @@ export class CacheService {
       });
     }
     return fresh;
-  }
-
-  async rateLimit({ key, limit, windowSeconds }: RateLimit): Promise<RateLimitResult> {
-    assertPositiveInt('limit', limit);
-    assertPositiveInt('windowSeconds', windowSeconds);
-
-    const [count, ttl] = await this.cacheClient.rateLimit(key, windowSeconds);
-    const allowed = count <= limit;
-    return {
-      allowed,
-      remaining: Math.max(0, limit - count),
-      retryAfter: allowed ? 0 : Math.max(0, ttl),
-    };
   }
 
   async findCacheKeys({ pattern = '*', count = 100 }: FindCacheKeys = {}): Promise<string[]> {

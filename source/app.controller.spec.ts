@@ -1,22 +1,19 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { ServiceUnavailableException } from '@nestjs/common';
+
 import { AppController } from './app.controller.js';
-import { AppService } from './app.service.js';
 
 describe('AppController', () => {
-  let appController: AppController;
+  const build = (dbUp: boolean, redisUp: boolean) =>
+    new AppController(
+      { query: vi.fn(() => (dbUp ? Promise.resolve([{}]) : Promise.reject(new Error('down')))) } as never,
+      { ping: vi.fn(() => Promise.resolve(redisUp)) } as never,
+    );
 
-  beforeEach(async () => {
-    const app: TestingModule = await Test.createTestingModule({
-      controllers: [AppController],
-      providers: [AppService],
-    }).compile();
-
-    appController = app.get<AppController>(AppController);
+  it('reports ok when Postgres and Redis answer', async () => {
+    await expect(build(true, true).health()).resolves.toEqual({ status: 'ok', database: true, redis: true });
   });
 
-  describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
-    });
+  it('fails when a dependency is down', async () => {
+    await expect(build(true, false).health()).rejects.toBeInstanceOf(ServiceUnavailableException);
   });
 });

@@ -1,23 +1,24 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 
-import { CtxType, IAuthReq, IAuthSocket } from '../interface/ctx.interface.js';
-import { IUser } from '../interface/database.interface.js';
+import type { CtxType, IAuthReq, IAuthSocket, ICredentials } from '../interface/ctx.interface.js';
+import type { User } from '../../database/model/user.model.js';
 
-export const User = createParamDecorator((data: keyof IUser | undefined, context: ExecutionContext) => {
-  let user!: IUser;
-
+const credentialsOf = (context: ExecutionContext): ICredentials | undefined => {
   switch (context.getType<CtxType>()) {
     case 'http':
-      user = (context.switchToHttp().getRequest() as IAuthReq).credentials.user;
-      break;
-
+      return context.switchToHttp().getRequest<IAuthReq>().credentials;
     case 'ws':
-      user = (context.switchToWs().getClient() as IAuthSocket).credentials.user;
-      break;
-
+      return context.switchToWs().getClient<IAuthSocket>().credentials;
     default:
-      return null;
+      return undefined;
   }
+};
 
-  return data ? user[data] : user;
+/** The signed-in user (set by AuthGuard). `@CurrentUser('id')` returns a single field. */
+export const CurrentUser = createParamDecorator((field: keyof User | undefined, context: ExecutionContext) => {
+  const user = credentialsOf(context)?.user;
+  return field ? user?.[field] : user;
 });
+
+/** Id of the current login session (the token's `sid`). */
+export const SessionId = createParamDecorator((_: unknown, context: ExecutionContext) => credentialsOf(context)?.decoded.sid);

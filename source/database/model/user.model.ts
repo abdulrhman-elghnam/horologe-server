@@ -1,3 +1,4 @@
+import { ApiHideProperty } from '@nestjs/swagger';
 import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, UpdateDateColumn, VersionColumn, type ValueTransformer } from 'typeorm';
 
 import { IUser } from '../../dependency/interface/database.interface.js';
@@ -25,6 +26,7 @@ export class User implements IUser {
   @Column({ type: 'varchar', length: 255, transformer: lowerTrim })
   email: string;
 
+  @ApiHideProperty()
   @Column({ name: 'password_hash', type: 'varchar', nullable: true, select: false })
   passwordHash?: string | null;
 
@@ -34,6 +36,7 @@ export class User implements IUser {
   @Column({ type: 'varchar', length: 32, nullable: true, transformer: trim })
   phone?: string | null;
 
+  @ApiHideProperty()
   @Column({ name: 'avatar_key', type: 'varchar', nullable: true })
   avatarKey?: string | null;
 
@@ -47,6 +50,7 @@ export class User implements IUser {
   @Column({ type: 'enum', enum: AuthProviderEnum, enumName: 'auth_provider', default: AuthProviderEnum.SYSTEM })
   provider: AuthProviderEnum;
 
+  @ApiHideProperty()
   @Index({ unique: true })
   @Column({ name: 'google_id', type: 'varchar', nullable: true, select: false })
   googleId?: string | null;
@@ -66,6 +70,7 @@ export class User implements IUser {
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt: Date;
 
+  @ApiHideProperty()
   @VersionColumn()
   version: number;
 }

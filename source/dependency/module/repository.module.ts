@@ -1,12 +1,64 @@
 import { Global, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { User } from '../../database/model/_INDEX.js';
-import { UserRepository } from '../../database/repository/_INDEX.js';
+import { ENTITIES } from '../../database/model/entities.js';
+import {
+  AddressRepository,
+  AuditLogRepository,
+  BrandRepository,
+  CartItemRepository,
+  CartRepository,
+  CategoryRepository,
+  CollectionRepository,
+  CompareRepository,
+  CouponRepository,
+  CouponUsageRepository,
+  InventoryMovementRepository,
+  InventoryRepository,
+  NotificationRepository,
+  OrderItemRepository,
+  OrderRepository,
+  PaymentRepository,
+  ReviewRepository,
+  ShipmentRepository,
+  ShippingMethodRepository,
+  UserRepository,
+  WatchImageRepository,
+  WatchRepository,
+  WatchVariantRepository,
+  WebhookEventRepository,
+  WishlistRepository,
+} from '../../database/repository/_INDEX.js';
 
-const ENTITIES = [User];
-const REPOSITORIES = [UserRepository];
+const REPOSITORIES = [
+  UserRepository,
+  AddressRepository,
+  BrandRepository,
+  CategoryRepository,
+  CollectionRepository,
+  WatchRepository,
+  WatchImageRepository,
+  WatchVariantRepository,
+  InventoryRepository,
+  InventoryMovementRepository,
+  CartRepository,
+  CartItemRepository,
+  WishlistRepository,
+  CompareRepository,
+  CouponRepository,
+  CouponUsageRepository,
+  OrderRepository,
+  OrderItemRepository,
+  PaymentRepository,
+  WebhookEventRepository,
+  ShippingMethodRepository,
+  ShipmentRepository,
+  ReviewRepository,
+  NotificationRepository,
+  AuditLogRepository,
+];
 
+/** Global data-access layer: every feature module can inject any repository. */
 @Global()
 @Module({
   imports: [TypeOrmModule.forFeature(ENTITIES)],

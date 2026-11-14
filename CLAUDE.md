@@ -6,69 +6,108 @@ See also `AGENTS.md` (NestJS version notes, first-party `@nestjs/*` packages to 
 
 ## Project
 
-Horologe server: the backend for a watch store e-commerce app (catalog, cart, orders, payments, shipping, reviews, real-time notifications). It's built on NestJS 12, is ESM-only, and uses TypeScript 6.
+Horologe server: the backend for a watch store e-commerce app. It covers catalog, cart, wishlist/compare, coupons, orders, payments, shipping, reviews, admin reports and real-time notifications. Stack: NestJS 12 (ESM-only), TypeScript 6, Postgres via TypeORM, Redis via ioredis, Socket.IO.
 
 The product spec is in `public/design/`:
-- `watch-store-api.txt` lists every REST route with its role (`PUBLIC`/`AUTH`/`ADMIN`), the Socket.IO `/realtime` namespace events, and the security rules: never trust client-supplied userId, role, price or stock; use idempotency keys for checkout and payment webhooks; update stock atomically; save notifications before emitting them.
-- `class/`, `activity/` and `usecase/` hold UML diagrams.
-- `public/documentation/` has empty placeholders for Swagger and Postman.
-
-Read the spec before you add a feature module.
+- `watch-store-api.txt` lists every REST route with its role, the Socket.IO `/realtime` events, and the security rules. Every route in it is implemented.
+- `class/`, `activity/` and `usecase/` hold UML diagrams. The DB schema follows the class diagram.
 
 ## Commands
 
 ```bash
-npm run start:dev        # watch mode
-npm run build            # nest build -> distribution/
-npm run start:prod       # node distribution/main
-npm run lint             # oxlint --type-aware source/ test/
-npm run format           # prettier (printWidth 160, single quotes, trailing commas)
-npm test                 # vitest, unit tests (**/*.spec.ts)
-npm run test:e2e         # vitest with vitest.config.e2e.ts (**/*.e2e-spec.ts)
-npx vitest run source/app.controller.spec.ts   # one file
-npx vitest run -t "should return"              # by test name
+npm run start:dev                  # watch mode (needs Postgres + Redis, see .env.example)
+npm run build                      # nest build -> distribution/
+npm run migration:run              # apply migrations (source/database/migration/)
+npm run migration:generate -- source/database/migration/<Name>   # after changing entities
+npm run lint                       # oxlint --type-aware source/ test/
+npm run format                     # prettier (printWidth 160, single quotes, trailing commas)
+npm test                           # vitest, unit tests (**/*.spec.ts)
+npx vitest run source/application/coupon/coupon.rules.spec.ts    # one file
+node scripts/mock-webhook.mjs payment payment.succeeded <txId> <orderId> <amount> [currency]
+node scripts/mock-webhook.mjs shipping <trackingNumber> <status> [location]
+npm run docs:openapi               # write public/documentation/swagger.json (no DB/Redis needed)
 ```
 
-Some paths differ from the Nest defaults. The source root is `source/` (not `src/`), and the build output goes to `distribution/` (not `dist/`). Vitest runs with `globals: true`.
+The source root is `source/` (not `src/`) and build output goes to `distribution/`. Vitest runs with `globals: true`. Startup seeds the super admin (`ADMIN_EMAIL` / `ADMIN_PASSWORD`) and the default shipping methods.
 
 ## Conventions
 
-- Relative imports must end in `.js`. Use `import.meta.dirname`, never `__dirname`.
-- Each folder under `source/dependency/` and `source/database/` has an `_INDEX.ts` barrel. Several barrels are still empty. Keep a barrel up to date when you add files to its folder.
-- Oxlint treats `typescript/no-floating-promises` as an error, so every promise must be awaited or handled.
-- Repository and service methods take one object argument (`{ filter, update, options }`, `{ key, value }`), not positional arguments.
-- Validation uses Zod 4. Today that runs through the custom `CustomValidationPipe(schema)` in `dependency/pipe/`; AGENTS.md also points to Nest's `StandardSchemaValidationPipe`.
+- Relative imports end in `.js`. Use `import.meta.dirname`, never `__dirname`.
+- Each folder under `source/dependency/` and `source/database/` has an `_INDEX.ts` barrel. Keep it updated.
+- Oxlint treats `typescript/no-floating-promises` as an error.
+- Repository methods take one object argument: `{ where, data, options, manager }`. Pass `manager` to run inside a transaction.
+- **Validation:** class-validator DTOs with a global `ValidationPipe` (`whitelist`, `forbidNonWhitelisted`, `transform`). Unknown fields return 400. Shared decorators (`RequiredText`, `Money`, `Int`, …) are in `dependency/dto/validators.ts`, and `PaginationQueryDto` is in `dependency/dto/`.
+- Never take userId, role, price, totals or stock from the client. Use `@CurrentUser('id')` and server-side prices.
+- Throw exceptions with plain English messages. `Localize` translates them through `source/i18n/*/errors.json`. Business errors also carry a `code` (e.g. `OUT_OF_STOCK`, `INVALID_ORDER_TRANSITION`).
+- Money is `numeric(12,2)` (`MoneyColumn`) read back as a number. Do the maths through `dependency/util/money.ts`.
 
 ## Architecture
 
-The code is mostly infrastructure scaffolding at this stage. `AppModule` currently imports only `RealtimeModule` (an empty Socket.IO gateway in `source/application/`). Most of `source/dependency/` is written but **not yet registered** in any module, so wiring it up is usually part of a task.
+`AppModule` has two lists:
+- **INFRASTRUCTURE** (all global): config, TypeORM, `RepositoryModule` (every repository), Redis `CacheModule`, `SecurityModule`, `ProviderModule` (payment/shipping adapters), `RealtimeModule` and the throttler.
+- **FEATURES**: one module per area of the spec under `source/application/<area>/`. Each module has a controller (public plus `admin-*.controller.ts` where needed), a service, `dto/`, and a `*.presenter.ts` that shapes responses.
 
-- `source/dependency/` holds cross-cutting building blocks:
-  - `guard/`: `AuthGuard` reads a Bearer token from HTTP headers or the Socket.IO handshake. It verifies the token through `TokenService` and attaches `req.credentials = { user, decoded }`. `RolesGuard` checks the result. You pick the token type with `@Token(TokenEnum.REFRESH)` and the roles with `@Role([...])`, both from `decorator/`.
-  - `service/`:
-    - `TokenService` handles JWT access and refresh tokens; it tracks a token's `jti` in Redis.
-    - `CacheService` wraps ioredis, which it gets injected as `'REDIS_CLIENT'`. It also does Lua-based rate limiting, and its `RedisKeys` builders define the key naming.
-    - `StorageService` stores files AES-encrypted on local disk under `storage/` and serves them through HMAC-signed URLs (`SignedUrl` in `presenter.ts`, `API_PREFIX = /api/v1`).
-    - There are also security, logger and util services.
-  - `interceptor/`: `TransformInterceptor` wraps every HTTP response as `{ message, data }` (it skips `StreamableFile`). There are also timeout, logging and cache interceptors.
-  - `language/`: i18n (`en`/`ar`) through `@nestjs/i18n`. `Localize.text('english message')` reverse-looks-up the English string in `source/i18n/en/errors.json` (including `{param}` templates) and translates it. So throw exceptions with plain English messages that match that file.
-  - `value/`: enums. **Watch out:** `SystemRoleEnum` still holds `doctor`/`patient`, left over from another project. The spec's roles are GUEST, CUSTOMER, ADMIN and SUPER_ADMIN.
-- `source/database/`: `model/` holds entities and `repository/` holds data access. Each repository extends the generic `DatabaseRepository<T>` in `base.repository.ts`.
+Global providers: `ThrottlerGuard`, `TransformInterceptor` (wraps responses as `{ message, data }`), `AuditInterceptor` (writes `audit_logs` for handlers marked `@Audit(action, resource)`), and `MaintenanceMiddleware`.
 
-### In-progress database migration
+### Auth
 
-The project is moving from Mongoose to **TypeORM + Postgres** (`@nestjs/typeorm`, `typeorm`, `pg`); the API spec's mention of MongoDB is outdated. Already migrated:
-- `base.repository.ts`: generic `DatabaseRepository<T extends { id: string }>` wrapping a TypeORM `Repository<T>`. Methods take `{ where, data, options, manager }`, where `manager` is an `EntityManager` used to run the call inside a transaction.
-- `user.model.ts` (the `User` entity: uuid `id`, snake_case columns, `@VersionColumn` in place of `__v`) and `user.repository.ts`.
+- `@Auth(...roles)`, `@AdminOnly()` and `@SuperAdminOnly()` (`dependency/decorator/auth.decorator.ts`) combine `AuthGuard` and `RolesGuard`.
+- Access and refresh JWTs carry a `jti`, and that jti's session lives in Redis. Disabling a user or signing out deletes the session, so their token is rejected straight away.
+- Roles are `customer`, `admin` and `super_admin`.
 
-Entities use uuid string ids (`id`, not `_id`/`ObjectId`). These files still import `mongoose` or `HUserDocument` and don't compile yet: `token.service.ts`, `util.service.ts`, `ctx.interface.ts`, `user.decorator.ts` and `object-id.pipe.ts`. `TypeOrmModule.forRoot`/`forFeature` isn't wired up yet either.
+### Redis is only for sessions and user interaction
+
+`CacheService` / `RedisKeys` hold:
+- sessions (jti)
+- OTP and password-reset tokens
+- socket presence
+- the unread-notification count, cached and invalidated on write
+
+**Redis does not do rate limiting or HTTP caching.** Rate limiting is the in-memory `@nestjs/throttler`. It has a global default plus stricter `RateLimit.*()` decorators, and is configured by `RATE_LIMIT_ENABLED`, `RATE_LIMIT_MAX` and `RATE_LIMIT_TTL_SECONDS`.
+
+### Commerce flow (the parts that must stay correct)
+
+- **Stock** (`inventory/`, `InventoryRepository`): every change is one conditional `UPDATE … RETURNING` (`reserve`, `release`, `confirm`, `adjustAvailable`) plus an `inventory_movements` ledger row. Lines are processed in variantId order to avoid deadlocks. `InventoryService.publish()` emits stock socket events after commit. Note that TypeORM `.returning([...])` takes entity property names, not column names.
+- **Checkout** (`order/checkout.service.ts`) runs in one transaction:
+  1. Read the cart lines and price them on the server.
+  2. Lock the coupon row and reserve its usage.
+  3. Reserve stock.
+  4. Create the order and its item snapshots, then empty the cart.
+
+  The `Idempotency-Key` header is backed by a partial unique index on `(user_id, idempotency_key)`. The order expires after `PAYMENT_WINDOW_MINUTES`; `order-expiry.service.ts` sweeps expired orders with `FOR UPDATE SKIP LOCKED`.
+- **Order status**: every transition goes through `order.state.ts` (`canTransition`) and `OrderLifecycleService`. Lifecycle methods run inside the caller's transaction and return `OrderEffects`. The caller calls `publish(effects)` **after commit**, which saves the notification and then emits the socket events. Cancelling or returning a paid order sets `refundRequired`, and an admin refunds it through `POST /admin/payments/:id/refund`.
+- **Payments / shipping**: providers sit behind the `PaymentProvider` / `ShippingProvider` interfaces (`dependency/provider/`). Only mock providers exist; they sign webhooks with HMAC-SHA256 over the raw body in the `x-mock-signature` header (`rawBody: true` in `main.ts`). Webhooks are deduplicated through `webhook_events` (unique `(source, event_id)`), written in the same transaction as the change. A payment webhook must match the payment's amount, currency and order. A successful payment confirms the order and creates the shipment. Shipment updates move the order forward (`followShipment`).
+- **Coupons**: pure rules are in `coupon/coupon.rules.ts` (unit-tested). The checkout reservation is confirmed on payment and released on cancel or expiry.
+
+### Realtime
+
+The `/realtime` namespace:
+- authenticates with a JWT in `auth.token`;
+- puts each socket in `user:<id>`, and admins also in the admins room;
+- allows subscribing to `order:<id>` (owner or admin), `watch:<id>` (anyone) and `inventory` (admin);
+- validates payloads with a WS `ValidationPipe`, and sends errors as `realtime:error`.
+
+`RealtimeService` is the only emitter. All event and room names are in `realtime/realtime.event.ts`.
+
+### API docs (Swagger)
+
+- **Where:** Swagger UI is at `/api/v1/docs` and the OpenAPI JSON at `/api/v1/docs/json`. Both are on by default outside production; set `SWAGGER_ENABLED` to override.
+- **Setup:** `dependency/swagger/swagger.setup.ts`. It also lists the realtime events in the description and wraps 2xx schemas in `{ message, data }`.
+- **Schemas are generated** by the `@nestjs/swagger` CLI plugin (`nest-cli.json`, `classValidatorShim`, `introspectComments`). It reads every `*.dto.ts` and `*.model.ts`, so new DTO fields are documented automatically, and a method's JSDoc becomes its summary.
+- **When writing new code:**
+  - Use `PartialType`/`OmitType` from `@nestjs/swagger`, not `@nestjs/mapped-types`; otherwise the derived DTO's schema is empty.
+  - Every controller needs `@ApiTags(...)`.
+  - `@Auth()` already adds bearer-auth docs. Use `@ApiAuth()` on routes that apply `AuthGuard` directly.
+  - Mark internal entity columns with `@ApiHideProperty()`.
+
+### Files
+
+`StorageService` stores files AES-encrypted under `storage/`. They are served by `GET /api/v1/files/:kind/:id?exp&sig` using HMAC-signed URLs (`SignedUrl.sign`).
 
 ## Configuration
 
-`ConfigService` keys used so far:
-- `ACCESS_TOKEN_EXPIRES_IN` and `REFRESH_TOKEN_EXPIRES_IN` (seconds)
-- `ACCESS_USER_TOKEN_SIGNATURE` and `REFRESH_USER_TOKEN_SIGNATURE`
-- `encryption.key`
-- `storage.directory`
+All keys are read in `source/app.configuration.ts`, and `.env.example` lists them. Env files load in this order: `.env.<NODE_ENV>.local`, then `.env.<NODE_ENV>`, then `.env`.
 
-`ConfigModule` isn't registered yet, and `source/app.configuration.ts` is empty. The server listens on `PORT`, which defaults to 3000.
+Gotchas:
+- Setting an env var to an empty string does **not** override a value in the env file. To disable mail locally, set `MAIL_FROM=` (unset `mail.from` means codes are logged instead of emailed).
+- Leaving the throttler on breaks scripted smoke tests (5 logins per minute). Run them with `RATE_LIMIT_ENABLED=false`.

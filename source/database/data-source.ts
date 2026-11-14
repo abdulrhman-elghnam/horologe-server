@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { DataSource } from 'typeorm';
 import configuration from '../app.configuration.js';
 import { databaseOptions, type DatabaseConfig } from './database.options.js';
-import * as entities from './model/_INDEX.js';
+import { ENTITIES } from './model/entities.js';
 
 const env = process.env.NODE_ENV ?? 'development';
 try {
@@ -13,5 +13,5 @@ try {
 
 export default new DataSource({
   ...databaseOptions(configuration().database as DatabaseConfig),
-  entities: Object.values(entities),
+  entities: ENTITIES,
 });

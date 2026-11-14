@@ -31,7 +31,8 @@ import {
 import { AuthProviderEnum, SystemRoleEnum } from '../../dependency/value/security.enum.js';
 
 import type { ChangePasswordDto, EmailDto, GoogleCredentialDto, LoginDto, RegisterDto, ResetPasswordDto, VerifyEmailDto } from './dto/authentication.dto.js';
-import { RealtimeService } from '../_realtime_/realtime.service.js';
+import { RealtimeEvent } from '../realtime/realtime.event.js';
+import { RealtimeService } from '../realtime/realtime.service.js';
 
 const PASSWORD_RESET_TTL_SECONDS = 15 * 60;
 const EMAIL_OTP_TTL_SECONDS = 10 * 60;
@@ -90,6 +91,7 @@ export class AuthenticationService {
     }
 
     await this.issueVerificationCode(user.email).catch((error: Error) => this.logger.error(`Verification email failed: ${error.message}`));
+    this.realtime.emitToAdmins(RealtimeEvent.ADMIN_CUSTOMER_NEW, { userId: user.id, name: user.name, createdAt: user.createdAt });
 
     return { email: user.email, emailVerificationRequired: true };
   }
@@ -174,6 +176,7 @@ export class AuthenticationService {
 
         emailVerifiedAt: new Date(),
       });
+      this.realtime.emitToAdmins(RealtimeEvent.ADMIN_CUSTOMER_NEW, { userId: user.id, name: user.name, createdAt: user.createdAt });
       return { ...(await this.tokens.createSession({ user, issuer, client })), created: true };
     } catch (error) {
       if (isUniqueViolation(error)) {

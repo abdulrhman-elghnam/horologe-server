@@ -23,7 +23,8 @@
     "typeorm": "nest build && typeorm -d distribution/database/data-source.js",
     "migration:generate": "npm run typeorm -- migration:generate",
     "migration:run": "npm run typeorm -- migration:run",
-    "migration:revert": "npm run typeorm -- migration:revert"
+    "migration:revert": "npm run typeorm -- migration:revert",
+    "docs:openapi": "nest build && node distribution/openapi.js"
   },
   "dependencies": {
     "@nestjs/authentication": "^0.1.6",
@@ -36,6 +37,7 @@
     "@nestjs/mapped-types": "*",
     "@nestjs/platform-express": "^12.0.1",
     "@nestjs/platform-socket.io": "^12.5.0",
+    "@nestjs/swagger": "^12.0.5",
     "@nestjs/throttler": "^6.7.1",
     "@nestjs/typeorm": "^12.0.3",
     "@nestjs/websockets": "^12.5.0",

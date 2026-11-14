@@ -11,6 +11,7 @@ import {
   ObjectLiteral,
   QueryDeepPartialEntity,
   Repository,
+  SelectQueryBuilder,
   UpdateResult,
 } from 'typeorm';
 
@@ -24,7 +25,7 @@ export interface ReadOptions<T> {
   withDeleted?: boolean;
 }
 
-interface Tx {
+export interface Tx {
   manager?: EntityManager;
 }
 
@@ -36,11 +37,23 @@ export interface Paginated<T> {
   pages: number;
 }
 
+/** Runs a query builder as one page. Same result shape as `DatabaseRepository.paginate`. */
+export async function paginateQuery<T extends ObjectLiteral>(query: SelectQueryBuilder<T>, page = 1, size = 20): Promise<Paginated<T>> {
+  const currentPage = Math.max(1, Math.floor(page));
+  const limit = Math.max(1, Math.floor(size));
+  const [docs, count] = await query
+    .skip((currentPage - 1) * limit)
+    .take(limit)
+    .getManyAndCount();
+  return { docs, count, currentPage, size: limit, pages: Math.ceil(count / limit) };
+}
+
 @Injectable()
 export abstract class DatabaseRepository<T extends ObjectLiteral & { id: string }> {
   constructor(protected readonly repository: Repository<T>) {}
 
-  protected repo(manager?: EntityManager): Repository<T> {
+  /** The repository bound to `manager` when running inside a transaction. */
+  repo(manager?: EntityManager): Repository<T> {
     return manager ? manager.withRepository(this.repository) : this.repository;
   }
 

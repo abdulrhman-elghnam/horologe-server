@@ -35,13 +35,40 @@ DELETE/auth/sessions/:sessionId
 
 2. USERS MODULE
 
-GET /users/me [AUTH] PATCH /users/me [AUTH] PATCH /users/me/avatar
-[AUTH] GET /users/me/addresses [AUTH] POST /users/me/addresses [AUTH]
-GET /users/me/addresses/:addressId [AUTH] PATCH
-/users/me/addresses/:addressId [AUTH] DELETE
-/users/me/addresses/:addressId [AUTH] PATCH
-/users/me/addresses/:addressId/default [AUTH] GET /admin/users [ADMIN]
-GET /admin/users/:userId [ADMIN] PATCH /admin/users/:userId/status
+GET /users/me
+
+[AUTH] 
+PATCH /users/me 
+
+[AUTH]
+PATCH /users/me/avatar
+
+[AUTH] 
+GET /users/me/addresses 
+
+[AUTH] 
+POST /users/me/addresses 
+
+[AUTH]
+GET /users/me/addresses/:addressId 
+
+[AUTH] PATCH /users/me/addresses/:addressId 
+
+[AUTH] 
+DELETE /users/me/addresses/:addressId 
+
+[AUTH] 
+PATCH /users/me/addresses/:addressId/default 
+
+[AUTH] 
+GET /admin/users 
+
+[ADMIN]
+GET /admin/users/:userId 
+
+[ADMIN] 
+PATCH /admin/users/:userId/status
+
 [ADMIN]
 
 3. BRANDS MODULE

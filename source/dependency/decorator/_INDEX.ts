@@ -1,3 +1,5 @@
+export * from './audit.decorator.js';
+export * from './auth.decorator.js';
 export * from './rate-limit.decorator.js';
 export * from './role.decorator.js';
 export * from './timeout.decorator.js';

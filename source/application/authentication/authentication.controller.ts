@@ -1,20 +1,23 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 
 import { AuthenticationService } from './authentication.service.js';
 import { ChangePasswordDto, EmailDto, GoogleCredentialDto, LoginDto, RegisterDto, ResetPasswordDto, VerifyEmailDto } from './dto/authentication.dto.js';
 
-import { RateLimit, Token } from '../../dependency/decorator/_INDEX.js';
+import { ApiAuth, RateLimit, Token } from '../../dependency/decorator/_INDEX.js';
 import { AuthGuard } from '../../dependency/guard/_INDEX.js';
+import { BEARER } from '../../dependency/swagger/_INDEX.js';
 import { TokenService, UtilService, type SessionClient } from '../../dependency/service/_INDEX.js';
 import { TokenEnum } from '../../dependency/value/security.enum.js';
 import type { IAuthReq } from '../../dependency/interface/ctx.interface.js';
 
 const clientOf = (request: Request): SessionClient => ({
-ip: request.ip,
+  ip: request.ip,
   userAgent: request.headers['user-agent'],
 });
 
+@ApiTags('Authentication')
 @Controller('auth')
 export class AuthenticationController {
   constructor(
@@ -50,6 +53,8 @@ export class AuthenticationController {
   @HttpCode(HttpStatus.OK)
   @Token(TokenEnum.REFRESH)
   @UseGuards(AuthGuard)
+  @ApiBearerAuth(BEARER.refresh)
+  @ApiUnauthorizedResponse({ description: 'Missing, invalid or revoked refresh token' })
   refresh(@Req() request: IAuthReq) {
     return this.auth.refresh(this.tokens.getBearerToken(request), this.util.issuer(request));
   }
@@ -58,6 +63,7 @@ export class AuthenticationController {
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AuthGuard)
+  @ApiAuth()
   logout(@Req() request: IAuthReq) {
     return this.auth.logout(request.credentials.user.id, request.credentials.decoded.sid);
   }
@@ -94,12 +100,14 @@ export class AuthenticationController {
   @Post('change-password')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AuthGuard)
+  @ApiAuth()
   changePassword(@Body() body: ChangePasswordDto, @Req() request: IAuthReq) {
     return this.auth.changePassword(request.credentials.user, request.credentials.decoded.sid, body);
   }
 
   @Get('sessions')
   @UseGuards(AuthGuard)
+  @ApiAuth()
   sessions(@Req() request: IAuthReq) {
     return this.auth.listSessions(request.credentials.user.id, request.credentials.decoded.sid);
   }
@@ -108,6 +116,7 @@ export class AuthenticationController {
   @Delete('sessions/:sessionId')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AuthGuard)
+  @ApiAuth()
   revokeSession(@Param('sessionId', new ParseUUIDPipe()) sessionId: string, @Req() request: IAuthReq) {
     return this.auth.revokeSession(request.credentials.user.id, sessionId);
   }
@@ -116,6 +125,7 @@ export class AuthenticationController {
   @Delete('sessions')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AuthGuard)
+  @ApiAuth()
   revokeOtherSessions(@Req() request: IAuthReq) {
     return this.auth.revokeOtherSessions(request.credentials.user.id, request.credentials.decoded.sid);
   }

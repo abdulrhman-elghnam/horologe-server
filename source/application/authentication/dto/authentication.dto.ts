@@ -13,10 +13,8 @@ import {
   type ValidationOptions,
 } from 'class-validator';
 
-
 const trim = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value);
 const trimLower = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim().toLowerCase() : value);
-
 
 const MaxBytes = (max: number, options?: ValidationOptions) =>
   ValidateBy(
@@ -31,7 +29,6 @@ const MaxBytes = (max: number, options?: ValidationOptions) =>
     options,
   );
 
-
 const NotEqualTo = (property: string, options?: ValidationOptions) =>
   ValidateBy(
     {
@@ -45,7 +42,6 @@ const NotEqualTo = (property: string, options?: ValidationOptions) =>
     options,
   );
 
-
 const NewPassword = (): PropertyDecorator => (target, key) => {
   IsString()(target, key);
   MinLength(8)(target, key);
@@ -53,13 +49,11 @@ const NewPassword = (): PropertyDecorator => (target, key) => {
   Matches(/^(?=.*[A-Za-z])(?=.*\d)/, { message: 'password must contain at least one letter and one number' })(target, key);
 };
 
-
 const Email = (): PropertyDecorator => (target, key) => {
   Transform(trimLower)(target, key);
   IsEmail()(target, key);
   MaxLength(254)(target, key);
 };
-
 
 const RequiredText =
   (max: number): PropertyDecorator =>
